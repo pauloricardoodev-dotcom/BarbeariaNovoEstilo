@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(ls)",
+      "Exec(dir)",
+      "Exec(npm create)",
+      "Exec(cd barbearia-react)",
+      "Exec(mkdir)",
+      "Exec(del)",
+      "Exec(rmdir)",
+      "Exec(npm install)",
+      "Exec(npm run)"
+    ]
+  }
+}
