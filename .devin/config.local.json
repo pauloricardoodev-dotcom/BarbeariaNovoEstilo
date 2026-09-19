@@ -12,7 +12,10 @@
       "Exec(npm run)",
       "Exec(rm)",
       "Exec(git init)",
-      "Exec(git add)"
+      "Exec(git add)",
+      "Exec(git commit)",
+      "Exec(git config)",
+      "Exec(cat)"
     ]
   }
 }
