@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { SERVICES, PROS, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
+import { useState } from 'react';
+import { SERVICES, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
 
-const Booking = ({ preSelectedService, preSelectedPro }) => {
+const Booking = () => {
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
-  const [pro, setPro] = useState(null);
   const [dateOffset, setDateOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -16,21 +15,8 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const [toastMessage, setToastMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState({ name: false, phone: false, email: false });
 
-  // Handle pre-selected service/pro from other components
-  useEffect(() => {
-    if (preSelectedService) {
-      const foundService = SERVICES.find(s => s.id === preSelectedService);
-      if (foundService) {
-        setService(foundService);
-      }
-    }
-    if (preSelectedPro) {
-      const foundPro = PROS.find(p => p.id === preSelectedPro);
-      if (foundPro) {
-        setPro(foundPro);
-      }
-    }
-  }, [preSelectedService, preSelectedPro]);
+  // Profissional fixo para o agendamento
+  const pro = { id: 'barbeiro', name: 'Barbeiro Novo Estilo', role: 'Profissional', desc: 'Equipe Novo Estilo', initials: 'NE' };
 
   const formatPrice = (price) => {
     return 'R$ ' + price.toFixed(2).replace('.', ',');
@@ -52,9 +38,9 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     return d.getDay() === 0;
   };
 
-  const slotUnavailable = (dateStr, proId, time) => {
+  const slotUnavailable = (dateStr, time) => {
     let h = 0;
-    const str = dateStr + proId + time;
+    const str = dateStr + pro.id + time;
     for (let i = 0; i < str.length; i++) {
       h = (h * 31 + str.charCodeAt(i)) % 97;
     }
@@ -96,7 +82,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   };
 
   const downloadICS = () => {
-    if (!selectedDate || !selectedTime || !service || !pro) return;
+    if (!selectedDate || !selectedTime || !service) return;
     
     const [y, m, d] = selectedDate.split('-').map(Number);
     const [hh, mm] = selectedTime.split(':').map(Number);
@@ -109,7 +95,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
       'SUMMARY:' + service.name + ' - Barbearia Novo Estilo',
       'DESCRIPTION:Atendimento com ' + pro.name,
-      'LOCATION:Rua das Palmeiras, 482, Batel, Curitiba - PR',
+      'LOCATION:Rua das Palmeiras, 482, Centro, Maringá - PR',
       'DTSTART:' + fmt(start), 'DTEND:' + fmt(end),
       'END:VEVENT', 'END:VCALENDAR'
     ].join('\r\n');
@@ -146,7 +132,6 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const resetFlow = () => {
     setStep(1);
     setService(null);
-    setPro(null);
     setDateOffset(0);
     setSelectedDate(null);
     setSelectedTime(null);
@@ -161,7 +146,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const handleCardPayment = () => {
     // In a real app, you would validate and process the card payment here
     // For demo purposes, we'll just show confirmation
-    setStep(6);
+    setStep(5);
   };
 
   // Render functions for each step
@@ -219,63 +204,81 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   };
 
   const renderStep2 = () => {
-    return (
-      <div className="step-panel" style={{ display: step === 2 ? 'block' : 'none' }}>
-        <h3>Escolha seu profissional</h3>
-        <p className="step-sub">Todos disponíveis para o serviço selecionado.</p>
-        <div className="pro-select-grid">
-          {PROS.map(p => (
-            <div
-              key={p.id}
-              className={`pro-pick ${pro && pro.id === p.id ? 'selected' : ''}`}
-              onClick={() => setPro(p)}
-            >
-              <div className="mini-avatar"><span>{p.initials}</span></div>
-              <h4>{p.name}</h4>
-              <div className="role">{p.role}</div>
-              <div className="avail">{service ? 'Disponível para ' + service.name : 'Disponível'}</div>
-            </div>
-          ))}
-        </div>
-        <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(1)}>← Voltar</button>
-          <button className="btn btn-primary" disabled={!pro} onClick={() => setStep(3)}>
-            Continuar →
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderStep3 = () => {
-    const renderDateList = () => {
-      const chips = [];
-      for (let i = 0; i < 6; i++) {
-        const d = dateAt(dateOffset + i);
-        const key = d.toISOString().slice(0, 10);
-        const closed = isClosed(d);
-        chips.push(
+    const renderCalendar = () => {
+      const today = new Date();
+      const currentMonth = new Date(today.getFullYear(), today.getMonth() + dateOffset, 1);
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startingDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      
+      const monthName = MONTHS[month];
+      
+      const days = [];
+      for (let i = 0; i < startingDay; i++) {
+        days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
+      }
+      
+      for (let day = 1; day <= totalDays; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = date.toISOString().slice(0, 10);
+        const isToday = date.toDateString() === today.toDateString();
+        const isPast = date < today && !isToday;
+        const isSunday = date.getDay() === 0;
+        const isSelected = selectedDate === dateStr;
+        
+        days.push(
           <div
-            key={i}
-            className={`date-chip ${closed ? 'closed' : ''} ${selectedDate === key ? 'selected' : ''}`}
+            key={day}
+            className={`calendar-day ${isPast || isSunday ? 'disabled' : ''} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
             onClick={() => {
-              if (!closed) {
-                setSelectedDate(key);
+              if (!isPast && !isSunday) {
+                setSelectedDate(dateStr);
                 setSelectedTime(null);
               }
             }}
           >
-            <span className="dn">{String(d.getDate()).padStart(2, '0')}</span>
-            <span className="dw">{WEEKDAYS[d.getDay()]}</span>
+            {day}
           </div>
         );
       }
-      return chips;
+      
+      return (
+        <div className="calendar-container">
+          <div className="calendar-header">
+            <button
+              className="calendar-nav"
+              onClick={() => setDateOffset(Math.max(0, dateOffset - 1))}
+              disabled={dateOffset <= 0}
+            >
+              ‹
+            </button>
+            <h4>{monthName} {year}</h4>
+            <button
+              className="calendar-nav"
+              onClick={() => setDateOffset(dateOffset + 1)}
+            >
+              ›
+            </button>
+          </div>
+          <div className="calendar-weekdays">
+            {WEEKDAYS.map(day => (
+              <div key={day} className="calendar-weekday">{day}</div>
+            ))}
+          </div>
+          <div className="calendar-grid">
+            {days}
+          </div>
+        </div>
+      );
     };
 
     const renderTimeGrid = (times) => {
       return times.map(t => {
-        const unavailable = !selectedDate || !pro ? false : slotUnavailable(selectedDate, pro.id, t);
+        const unavailable = !selectedDate ? false : slotUnavailable(selectedDate, t);
         const sel = selectedTime === t;
         return (
           <div
@@ -292,47 +295,46 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     };
 
     return (
-      <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 2 ? 'block' : 'none' }}>
         <h3>Escolha o melhor horário</h3>
         <p className="step-sub">Selecione a data e o horário disponível.</p>
-        <div className="date-picker">
-          <button
-            className="date-arrow"
-            disabled={dateOffset <= 0}
-            onClick={() => setDateOffset(Math.max(0, dateOffset - 6))}
-          >
-            ‹
-          </button>
-          <div className="date-list">
-            {renderDateList()}
+        <div className="datetime-picker">
+          <div className="calendar-side">
+            {renderCalendar()}
           </div>
-          <button
-            className="date-arrow"
-            onClick={() => setDateOffset(dateOffset + 6)}
-          >
-            ›
-          </button>
-        </div>
-        <div className="time-groups">
-          <div>
-            <h5>Manhã</h5>
-            <div className="time-grid">
-              {renderTimeGrid(TIMES_MANHA)}
-            </div>
-          </div>
-          <div>
-            <h5>Tarde</h5>
-            <div className="time-grid">
-              {renderTimeGrid(TIMES_TARDE)}
-            </div>
+          <div className="time-side">
+            {selectedDate ? (
+              <>
+                <h4>Horários disponíveis</h4>
+                <p className="selected-date">{formatSelectedDateLong()}</p>
+                <div className="time-groups">
+                  <div>
+                    <h5>Manhã</h5>
+                    <div className="time-grid">
+                      {renderTimeGrid(TIMES_MANHA)}
+                    </div>
+                  </div>
+                  <div>
+                    <h5>Tarde</h5>
+                    <div className="time-grid">
+                      {renderTimeGrid(TIMES_TARDE)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="time-placeholder">
+                <p>Selecione uma data no calendário para ver os horários disponíveis</p>
+              </div>
+            )}
           </div>
         </div>
         <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
+          <button className="btn btn-ghost" onClick={() => setStep(1)}>← Voltar</button>
           <button
             className="btn btn-primary"
             disabled={!selectedDate || !selectedTime}
-            onClick={() => setStep(4)}
+            onClick={() => setStep(3)}
           >
             Continuar →
           </button>
@@ -341,20 +343,20 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     );
   };
 
-  const renderStep4 = () => {
+  const renderStep3 = () => {
     const summaryHTML = () => {
       if (!service) {
         return `<h4>Seu agendamento</h4><p className="summary-empty">Escolha um serviço para começar.</p>`;
       }
       let rows = `<div className="summary-row"><span className="k">Serviço</span><span className="v">${service.name}</span></div>`;
-      if (pro) rows += `<div className="summary-row"><span className="k">Profissional</span><span className="v">${pro.name}</span></div>`;
+      rows += `<div className="summary-row"><span className="k">Profissional</span><span className="v">${pro.name}</span></div>`;
       if (selectedDate) rows += `<div className="summary-row"><span className="k">Data</span><span className="v">${formatSelectedDate()}</span></div>`;
       if (selectedTime) rows += `<div className="summary-row"><span className="k">Horário</span><span className="v">${selectedTime}</span></div>`;
       return `<h4>Seu agendamento</h4>${rows}<div className="summary-total"><span className="k">Total</span><span className="v">${formatPrice(service.price)}</span></div>`;
     };
 
     return (
-      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
         <h3>Quase pronto!</h3>
         <p className="step-sub">Informe seus dados para confirmarmos o agendamento.</p>
         <div className="step4-grid">
@@ -396,11 +398,11 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
           <div className="summary-card" dangerouslySetInnerHTML={{ __html: summaryHTML() }} />
         </div>
         <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(3)}>← Voltar</button>
+          <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
           <button
             className="btn btn-primary"
             onClick={() => {
-              if (validateStep4()) setStep(5);
+              if (validateStep4()) setStep(4);
             }}
           >
             Ir para pagamento →
@@ -410,11 +412,11 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     );
   };
 
-  const renderStep5 = () => {
+  const renderStep4 = () => {
     const amount = service ? formatPrice(service.price) : formatPrice(0);
 
     return (
-      <div className="step-panel" style={{ display: step === 5 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
         <h3>Como deseja pagar?</h3>
         <p className="step-sub">Escolha a forma de pagamento para concluir.</p>
         <div className="pay-tabs">
@@ -444,7 +446,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
             <div className="pix-info">
               <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
               <div className="pix-amount">{amount}</div>
-              <button className="btn btn-primary" onClick={() => setStep(6)}>
+              <button className="btn btn-primary" onClick={() => setStep(5)}>
                 Já realizei o pagamento
               </button>
             </div>
@@ -484,14 +486,14 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
             <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
             <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
             <div className="amt">{amount}</div>
-            <button className="btn btn-primary" onClick={() => setStep(6)}>
+            <button className="btn btn-primary" onClick={() => setStep(5)}>
               Confirmar agendamento
             </button>
           </div>
         </div>
 
         <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(4)}>← Voltar</button>
+          <button className="btn btn-ghost" onClick={() => setStep(3)}>← Voltar</button>
           <span></span>
         </div>
       </div>
@@ -500,7 +502,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
 
   const renderConfirmation = () => {
     return (
-      <div className="step-panel" style={{ display: step === 6 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 5 ? 'block' : 'none' }}>
         <div className="confirm-panel">
           <div className="check-circle">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -534,16 +536,15 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
         <div className="section-head">
           <div className="kicker-line"><div className="rule"></div><span>Reserve seu horário</span></div>
           <h2>Agendar atendimento</h2>
-          <p>Cinco passos simples e seu horário está garantido.</p>
+          <p>Quatro passos simples e seu horário está garantido.</p>
         </div>
 
         <div className="booking-shell">
-          {step !== 6 && renderProgress()}
+          {step !== 5 && renderProgress()}
           {renderStep1()}
           {renderStep2()}
           {renderStep3()}
           {renderStep4()}
-          {renderStep5()}
           {renderConfirmation()}
         </div>
       </div>

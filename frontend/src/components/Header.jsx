@@ -34,8 +34,6 @@ const Header = () => {
         </a>
         <nav className="main-nav">
           <a href="#inicio" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>Início</a>
-          <a href="#servicos" onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}>Serviços</a>
-          <a href="#profissionais" onClick={(e) => { e.preventDefault(); scrollToSection('profissionais'); }}>Profissionais</a>
           <a href="#sobre" onClick={(e) => { e.preventDefault(); scrollToSection('sobre'); }}>Sobre</a>
           <a href="#agendamento" onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}>Agendar</a>
         </nav>
@@ -60,8 +58,6 @@ const Header = () => {
       </div>
       <div className={`mobile-nav ${mobileNavOpen ? 'open' : ''}`}>
         <a href="#inicio" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>Início</a>
-        <a href="#servicos" onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}>Serviços</a>
-        <a href="#profissionais" onClick={(e) => { e.preventDefault(); scrollToSection('profissionais'); }}>Profissionais</a>
         <a href="#sobre" onClick={(e) => { e.preventDefault(); scrollToSection('sobre'); }}>Sobre</a>
         <a href="#agendamento" onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}>Agendar</a>
         <a 

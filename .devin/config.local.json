@@ -9,7 +9,10 @@
       "Exec(del)",
       "Exec(rmdir)",
       "Exec(npm install)",
-      "Exec(npm run)"
+      "Exec(npm run)",
+      "Exec(rm)",
+      "Exec(git init)",
+      "Exec(git add)"
     ]
   }
 }

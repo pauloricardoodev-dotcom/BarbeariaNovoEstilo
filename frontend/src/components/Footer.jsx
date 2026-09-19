@@ -25,21 +25,19 @@ const Footer = () => {
               </div>
               <div className="brand-text"><b>Barbearia Novo Estilo</b></div>
             </a>
-            <p>Barbearia com essência clássica inglesa e cuidado contemporâneo, no coração de Curitiba.</p>
+            <p>Barbearia com essência clássica inglesa e cuidado contemporâneo, no coração de Maringá.</p>
           </div>
           <div>
             <h5>Navegação</h5>
             <ul>
               <li><a href="#inicio" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>Início</a></li>
-              <li><a href="#servicos" onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}>Serviços</a></li>
-              <li><a href="#profissionais" onClick={(e) => { e.preventDefault(); scrollToSection('profissionais'); }}>Profissionais</a></li>
               <li><a href="#agendamento" onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}>Agendar</a></li>
             </ul>
           </div>
           <div>
             <h5>Contato</h5>
             <p className="line">Rua das Palmeiras, 482</p>
-            <p className="line">Batel — Curitiba, PR</p>
+            <p className="line">Centro — Maringá, PR</p>
             <p className="line">(41) 3025-1187</p>
           </div>
           <div>

@@ -12,7 +12,7 @@ const Hero = () => {
         <div className="hero-copy">
           <div className="eyebrow">
             <div style={{ width: '36px', height: '2px', background: 'var(--gold)' }}></div>
-            <span>Desde 2011 — Curitiba</span>
+            <span>Desde 2005 — Maringá</span>
           </div>
           <h1>Seu estilo.<br/><em>Seu momento.</em></h1>
           <p className="sub">Cuidados, cortes e experiências pensadas para você.</p>
@@ -24,17 +24,9 @@ const Hero = () => {
             >
               Agendar horário
             </a>
-            <a 
-              href="#servicos" 
-              className="btn btn-outline-cream"
-              onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}
-            >
-              Conhecer serviços
-            </a>
           </div>
           <div className="hero-stats">
-            <div><b>13</b><span>Anos de tradição</span></div>
-            <div><b>3</b><span>Especialistas</span></div>
+            <div><b>20</b><span>Anos de tradição</span></div>
             <div><b>4.9</b><span>Avaliação média</span></div>
           </div>
         </div>
@@ -58,7 +50,7 @@ const Hero = () => {
                       <line x1="150" y1="330" x2="196" y2="330" stroke="#C7CCD0" strokeWidth="1"/>
                       <text x="260" y="337" textAnchor="middle" fontFamily="Inter, sans-serif" fontWeight="600" fontSize="19" fill="#C7CCD0" letterSpacing="6">NOVO ESTILO</text>
                       <line x1="324" y1="330" x2="370" y2="330" stroke="#C7CCD0" strokeWidth="1"/>
-                      <text x="260" y="560" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="11" fill="#C7CCD0" letterSpacing="4">EST. 2011 · CURITIBA</text>
+                      <text x="260" y="560" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="11" fill="#C7CCD0" letterSpacing="4">EST. 2011 · MARINGÁ</text>
                     </svg>
                   `;
                 }}

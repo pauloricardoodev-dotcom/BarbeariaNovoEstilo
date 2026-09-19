@@ -841,78 +841,149 @@ nav.main-nav a:hover {
   margin-top: 10px;
 }
 
-.date-picker {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.datetime-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
   margin-bottom: 36px;
 }
 
-.date-arrow {
-  width: 38px;
-  height: 38px;
+.calendar-side {
+  min-width: 0;
+}
+
+.calendar-container {
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 20px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.calendar-header h4 {
+  font-size: 18px;
+  margin: 0;
+  color: var(--navy);
+}
+
+.calendar-nav {
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--line);
   background: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: 14px;
   color: var(--navy);
+  cursor: pointer;
 }
 
-.date-arrow:disabled {
+.calendar-nav:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-.date-list {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  flex: 1;
-  padding-bottom: 4px;
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.date-chip {
-  min-width: 74px;
-  border: 1.5px solid var(--line);
-  background: var(--cream);
-  padding: 12px 6px;
+.calendar-weekday {
   text-align: center;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.date-chip .dn {
-  font-family: var(--serif);
-  font-size: 20px;
-  color: var(--navy);
-  display: block;
-}
-
-.date-chip .dw {
   font-size: 11px;
-  letter-spacing: 1px;
+  font-weight: 600;
   color: var(--ink-soft);
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  margin-top: 4px;
-  display: block;
+  padding: 8px 0;
 }
 
-.date-chip.selected {
-  border-color: var(--wine);
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--cream);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--navy);
+  transition: all .18s ease;
+}
+
+.calendar-day:hover:not(.disabled):not(.empty) {
+  border-color: var(--gold);
+  background: var(--white);
+}
+
+.calendar-day.selected {
   background: var(--wine);
-}
-
-.date-chip.selected .dn,
-.date-chip.selected .dw {
+  border-color: var(--wine);
   color: var(--white);
 }
 
-.date-chip.closed {
-  opacity: 0.35;
+.calendar-day.today {
+  border-color: var(--gold);
+  font-weight: 700;
+}
+
+.calendar-day.disabled {
+  opacity: 0.3;
   pointer-events: none;
+  background: var(--cream-2);
+}
+
+.calendar-day.empty {
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.time-side {
+  min-width: 0;
+}
+
+.time-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  border: 1.5px dashed var(--line);
+  background: var(--cream);
+  padding: 20px;
+  text-align: center;
+}
+
+.time-placeholder p {
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.selected-date {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--wine);
+  margin-bottom: 20px;
+  font-weight: 600;
 }
 
 .time-groups {
