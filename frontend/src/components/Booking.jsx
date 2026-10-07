@@ -530,7 +530,7 @@ const Booking = ({ preSelectedService }) => {
         <div className="section-head">
           <div className="kicker-line"><div className="rule"></div><span>Reserve seu horário</span></div>
           <h2>Agendar atendimento</h2>
-          <p>Cinco passos simples e seu horário está garantido.</p>
+          <p>Quatro passos simples e seu horário está garantido.</p>
         </div>
 
         <div className="booking-shell">
