@@ -1,21 +1,28 @@
 import { useState } from 'react';
 
+const NAV_LINKS = [
+  { id: 'inicio', label: 'Início' },
+  { id: 'servicos', label: 'Serviços' },
+  { id: 'sobre', label: 'Sobre' },
+  { id: 'agendamento', label: 'Agendar' },
+];
+
 const Header = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault();
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setMobileNavOpen(false);
     }
+    setMobileNavOpen(false);
   };
 
   return (
     <header>
-      <div className="top-stripe barberpole"></div>
-      <div className="wrap header-inner">
-        <a href="#inicio" className="brand" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>
+      <div className="container header-inner">
+        <a href="#inicio" className="brand" onClick={(e) => scrollToSection(e, 'inicio')}>
           <div className="mini-emblem">
             <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
               <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="1.3"/>
@@ -32,42 +39,54 @@ const Header = () => {
             <small>BARBEARIA CLÁSSICA</small>
           </div>
         </a>
-        <nav className="main-nav">
-          <a href="#inicio" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>Início</a>
-          <a href="#servicos" onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}>Serviços</a>
-          <a href="#profissionais" onClick={(e) => { e.preventDefault(); scrollToSection('profissionais'); }}>Profissionais</a>
-          <a href="#sobre" onClick={(e) => { e.preventDefault(); scrollToSection('sobre'); }}>Sobre</a>
-          <a href="#agendamento" onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}>Agendar</a>
+
+        <nav className="main-nav d-none d-lg-flex">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.id}
+              href={`#${link.id}`}
+              onClick={(e) => scrollToSection(e, link.id)}
+            >
+              {link.label}
+            </a>
+          ))}
         </nav>
+
         <div className="header-cta">
-          <button 
-            className="menu-toggle" 
+          <a
+            href="#agendamento"
+            className="btn btn-primary d-none d-lg-inline-flex"
+            onClick={(e) => scrollToSection(e, 'agendamento')}
+          >
+            Agendar horário
+          </a>
+          <button
+            className="menu-toggle d-lg-none"
             aria-label="Abrir menu"
+            aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
           >
             <span></span>
             <span></span>
             <span></span>
           </button>
-          <a 
-            href="#agendamento" 
-            className="btn btn-primary"
-            onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}
-          >
-            Agendar horário
-          </a>
         </div>
       </div>
-      <div className={`mobile-nav ${mobileNavOpen ? 'open' : ''}`}>
-        <a href="#inicio" onClick={(e) => { e.preventDefault(); scrollToSection('inicio'); }}>Início</a>
-        <a href="#servicos" onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}>Serviços</a>
-        <a href="#profissionais" onClick={(e) => { e.preventDefault(); scrollToSection('profissionais'); }}>Profissionais</a>
-        <a href="#sobre" onClick={(e) => { e.preventDefault(); scrollToSection('sobre'); }}>Sobre</a>
-        <a href="#agendamento" onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}>Agendar</a>
-        <a 
-          href="#agendamento" 
+
+      <div className={`mobile-nav d-lg-none ${mobileNavOpen ? 'open' : ''}`}>
+        {NAV_LINKS.map((link) => (
+          <a
+            key={link.id}
+            href={`#${link.id}`}
+            onClick={(e) => scrollToSection(e, link.id)}
+          >
+            {link.label}
+          </a>
+        ))}
+        <a
+          href="#agendamento"
           className="btn btn-primary"
-          onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}
+          onClick={(e) => scrollToSection(e, 'agendamento')}
         >
           Agendar horário
         </a>

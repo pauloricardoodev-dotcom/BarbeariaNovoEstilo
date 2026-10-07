@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { SERVICES, PROS, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
+import { SERVICES, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
 
-const Booking = ({ preSelectedService, preSelectedPro }) => {
+const Booking = ({ preSelectedService }) => {
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
-  const [pro, setPro] = useState(null);
-  const [dateOffset, setDateOffset] = useState(0);
+  const [viewMonth, setViewMonth] = useState(() => {
+    const t = new Date();
+    return { y: t.getFullYear(), m: t.getMonth() };
+  });
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [name, setName] = useState('');
@@ -16,7 +18,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const [toastMessage, setToastMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState({ name: false, phone: false, email: false });
 
-  // Handle pre-selected service/pro from other components
+  // Handle pre-selected service from other components
   useEffect(() => {
     if (preSelectedService) {
       const foundService = SERVICES.find(s => s.id === preSelectedService);
@@ -24,53 +26,35 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
         setService(foundService);
       }
     }
-    if (preSelectedPro) {
-      const foundPro = PROS.find(p => p.id === preSelectedPro);
-      if (foundPro) {
-        setPro(foundPro);
-      }
-    }
-  }, [preSelectedService, preSelectedPro]);
+  }, [preSelectedService]);
 
   const formatPrice = (price) => {
     return 'R$ ' + price.toFixed(2).replace('.', ',');
-  };
-
-  const baseDate = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const dateAt = (offsetDays) => {
-    const d = baseDate();
-    d.setDate(d.getDate() + offsetDays);
-    return d;
   };
 
   const isClosed = (d) => {
     return d.getDay() === 0;
   };
 
-  const slotUnavailable = (dateStr, proId, time) => {
+  const slotUnavailable = (dateStr, time) => {
     let h = 0;
-    const str = dateStr + proId + time;
+    const str = dateStr + time;
     for (let i = 0; i < str.length; i++) {
       h = (h * 31 + str.charCodeAt(i)) % 97;
     }
     return h % 5 === 0;
   };
 
-  const formatSelectedDate = () => {
-    if (!selectedDate) return '';
-    const [y, m, d] = selectedDate.split('-').map(Number);
-    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
-  };
-
   const formatSelectedDateLong = () => {
     if (!selectedDate) return '';
     const [y, m, d] = selectedDate.split('-').map(Number);
     return `${String(d).padStart(2, '0')} de ${MONTHS[m - 1]} de ${y}`;
+  };
+
+  const formatSelectedDateShort = () => {
+    if (!selectedDate) return '';
+    const [, m, d] = selectedDate.split('-').map(Number);
+    return `${String(d).padStart(2, '0')} ${MONTHS[m - 1].slice(0, 3).toUpperCase()}`;
   };
 
   const generateQRCode = () => {
@@ -96,7 +80,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   };
 
   const downloadICS = () => {
-    if (!selectedDate || !selectedTime || !service || !pro) return;
+    if (!selectedDate || !selectedTime || !service) return;
     
     const [y, m, d] = selectedDate.split('-').map(Number);
     const [hh, mm] = selectedTime.split(':').map(Number);
@@ -108,7 +92,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     const ics = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
       'SUMMARY:' + service.name + ' - Barbearia Novo Estilo',
-      'DESCRIPTION:Atendimento com ' + pro.name,
+      'DESCRIPTION:Atendimento na Barbearia Novo Estilo',
       'LOCATION:Rua das Palmeiras, 482, Batel, Curitiba - PR',
       'DTSTART:' + fmt(start), 'DTEND:' + fmt(end),
       'END:VEVENT', 'END:VCALENDAR'
@@ -146,8 +130,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const resetFlow = () => {
     setStep(1);
     setService(null);
-    setPro(null);
-    setDateOffset(0);
+    setViewMonth({ y: new Date().getFullYear(), m: new Date().getMonth() });
     setSelectedDate(null);
     setSelectedTime(null);
     setPayMethod('pix');
@@ -161,13 +144,13 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   const handleCardPayment = () => {
     // In a real app, you would validate and process the card payment here
     // For demo purposes, we'll just show confirmation
-    setStep(6);
+    setStep(5);
   };
 
   // Render functions for each step
   const renderProgress = () => {
     return (
-      <div className="progress-bar">
+      <div className="progress-bar" role="list">
         {STEP_LABELS.map((label, i) => {
           const n = i + 1;
           let cls = '';
@@ -175,7 +158,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
           if (n === step) cls = 'active';
           const inner = n < step ? '✓' : n;
           return (
-            <div key={i} className={`progress-step ${cls}`}>
+            <div key={i} role="listitem" aria-current={n === step ? 'step' : undefined} className={`progress-step ${cls}`}>
               <div className="circ">{inner}</div>
               <span className="label">{label}</span>
             </div>
@@ -190,20 +173,21 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
       <div className="step-panel" style={{ display: step === 1 ? 'block' : 'none' }}>
         <h3>O que você deseja fazer?</h3>
         <p className="step-sub">Escolha o serviço para este agendamento.</p>
-        <div className="svc-select-grid">
+        <div className="row g-3">
           {SERVICES.map(s => (
-            <div
-              key={s.id}
-              className={`pick-card ${service && service.id === s.id ? 'selected' : ''}`}
-              onClick={() => setService(s)}
-            >
-              <div>
-                <div className="pc-title">{s.name}</div>
-                <div className="pc-meta">{s.duration} min</div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div className="pc-price">{formatPrice(s.price)}</div>
-                <div className="pick-check"></div>
+            <div className="col-12 col-md-6" key={s.id}>
+              <div
+                className={`pick-card ${service && service.id === s.id ? 'selected' : ''}`}
+                onClick={() => setService(s)}
+              >
+                <div>
+                  <div className="pc-title">{s.name}</div>
+                  <div className="pc-meta">{s.duration} min</div>
+                </div>
+                <div className="pc-right">
+                  <div className="pc-price">{formatPrice(s.price)}</div>
+                  <div className="pick-check"></div>
+                </div>
               </div>
             </div>
           ))}
@@ -218,121 +202,116 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     );
   };
 
-  const renderStep2 = () => {
+  const renderDateStep = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { y, m } = viewMonth;
+    const firstWeekday = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const isCurrentMonth = y === today.getFullYear() && m === today.getMonth();
+
+    const keyOf = (day) => `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const changeMonth = (delta) => {
+      const d = new Date(y, m + delta, 1);
+      setViewMonth({ y: d.getFullYear(), m: d.getMonth() });
+    };
+
+    const cells = [];
+    for (let i = 0; i < firstWeekday; i++) {
+      cells.push(<span key={`b${i}`} className="cal-blank"></span>);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(y, m, day);
+      const key = keyOf(day);
+      const disabled = d < today || isClosed(d);
+      const selected = selectedDate === key;
+      cells.push(
+        <button
+          key={key}
+          type="button"
+          disabled={disabled}
+          className={`cal-day ${selected ? 'selected' : ''} ${d.getTime() === today.getTime() ? 'today' : ''}`}
+          onClick={() => {
+            setSelectedDate(key);
+            setSelectedTime(null);
+          }}
+        >
+          {day}
+        </button>
+      );
+    }
+
+    const selectedLong = () => {
+      if (!selectedDate) return '';
+      const [sy, sm, sd] = selectedDate.split('-').map(Number);
+      const wd = new Date(sy, sm - 1, sd).getDay();
+      return `${WEEKDAYS[wd]} · ${String(sd).padStart(2, '0')} de ${MONTHS[sm - 1]}`;
+    };
+
+    const renderTimeGrid = (times) => times.map(t => {
+      const unavailable = slotUnavailable(selectedDate, t);
+      return (
+        <button
+          key={t}
+          type="button"
+          disabled={unavailable}
+          className={`time-slot ${unavailable ? 'disabled' : ''} ${selectedTime === t ? 'selected' : ''}`}
+          onClick={() => setSelectedTime(t)}
+        >
+          {t}
+        </button>
+      );
+    });
+
     return (
       <div className="step-panel" style={{ display: step === 2 ? 'block' : 'none' }}>
-        <h3>Escolha seu profissional</h3>
-        <p className="step-sub">Todos disponíveis para o serviço selecionado.</p>
-        <div className="pro-select-grid">
-          {PROS.map(p => (
-            <div
-              key={p.id}
-              className={`pro-pick ${pro && pro.id === p.id ? 'selected' : ''}`}
-              onClick={() => setPro(p)}
-            >
-              <div className="mini-avatar"><span>{p.initials}</span></div>
-              <h4>{p.name}</h4>
-              <div className="role">{p.role}</div>
-              <div className="avail">{service ? 'Disponível para ' + service.name : 'Disponível'}</div>
+        <h3>Escolha o melhor horário</h3>
+        <p className="step-sub">Selecione a data e o horário disponível.</p>
+        <div className="row g-4">
+          <div className="col-12 col-lg-6">
+            <div className="calendar">
+              <div className="cal-head">
+                <button type="button" className="date-arrow" aria-label="Mês anterior" disabled={isCurrentMonth} onClick={() => changeMonth(-1)}>‹</button>
+                <b>{MONTHS[m]} {y}</b>
+                <button type="button" className="date-arrow" aria-label="Próximo mês" onClick={() => changeMonth(1)}>›</button>
+              </div>
+              <div className="cal-grid cal-weekdays">
+                {WEEKDAYS.map(w => <span key={w}>{w}</span>)}
+              </div>
+              <div className="cal-grid">
+                {cells}
+              </div>
             </div>
-          ))}
+          </div>
+          <div className="col-12 col-lg-6">
+            <div className="times-panel">
+              {!selectedDate ? (
+                <p className="times-empty">Escolha uma data no calendário para ver os horários disponíveis.</p>
+              ) : (
+                <>
+                  <div className="times-date">{selectedLong()}</div>
+                  <div className="time-groups">
+                    <div>
+                      <h5>Manhã</h5>
+                      <div className="time-grid">{renderTimeGrid(TIMES_MANHA)}</div>
+                    </div>
+                    <div>
+                      <h5>Tarde</h5>
+                      <div className="time-grid">{renderTimeGrid(TIMES_TARDE)}</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
         <div className="step-nav">
           <button className="btn btn-ghost" onClick={() => setStep(1)}>← Voltar</button>
-          <button className="btn btn-primary" disabled={!pro} onClick={() => setStep(3)}>
-            Continuar →
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderStep3 = () => {
-    const renderDateList = () => {
-      const chips = [];
-      for (let i = 0; i < 6; i++) {
-        const d = dateAt(dateOffset + i);
-        const key = d.toISOString().slice(0, 10);
-        const closed = isClosed(d);
-        chips.push(
-          <div
-            key={i}
-            className={`date-chip ${closed ? 'closed' : ''} ${selectedDate === key ? 'selected' : ''}`}
-            onClick={() => {
-              if (!closed) {
-                setSelectedDate(key);
-                setSelectedTime(null);
-              }
-            }}
-          >
-            <span className="dn">{String(d.getDate()).padStart(2, '0')}</span>
-            <span className="dw">{WEEKDAYS[d.getDay()]}</span>
-          </div>
-        );
-      }
-      return chips;
-    };
-
-    const renderTimeGrid = (times) => {
-      return times.map(t => {
-        const unavailable = !selectedDate || !pro ? false : slotUnavailable(selectedDate, pro.id, t);
-        const sel = selectedTime === t;
-        return (
-          <div
-            key={t}
-            className={`time-slot ${unavailable ? 'disabled' : ''} ${sel ? 'selected' : ''}`}
-            onClick={() => {
-              if (!unavailable) setSelectedTime(t);
-            }}
-          >
-            {t}
-          </div>
-        );
-      });
-    };
-
-    return (
-      <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
-        <h3>Escolha o melhor horário</h3>
-        <p className="step-sub">Selecione a data e o horário disponível.</p>
-        <div className="date-picker">
-          <button
-            className="date-arrow"
-            disabled={dateOffset <= 0}
-            onClick={() => setDateOffset(Math.max(0, dateOffset - 6))}
-          >
-            ‹
-          </button>
-          <div className="date-list">
-            {renderDateList()}
-          </div>
-          <button
-            className="date-arrow"
-            onClick={() => setDateOffset(dateOffset + 6)}
-          >
-            ›
-          </button>
-        </div>
-        <div className="time-groups">
-          <div>
-            <h5>Manhã</h5>
-            <div className="time-grid">
-              {renderTimeGrid(TIMES_MANHA)}
-            </div>
-          </div>
-          <div>
-            <h5>Tarde</h5>
-            <div className="time-grid">
-              {renderTimeGrid(TIMES_TARDE)}
-            </div>
-          </div>
-        </div>
-        <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
           <button
             className="btn btn-primary"
             disabled={!selectedDate || !selectedTime}
-            onClick={() => setStep(4)}
+            onClick={() => setStep(3)}
           >
             Continuar →
           </button>
@@ -342,23 +321,38 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
   };
 
   const renderStep4 = () => {
-    const summaryHTML = () => {
-      if (!service) {
-        return `<h4>Seu agendamento</h4><p className="summary-empty">Escolha um serviço para começar.</p>`;
-      }
-      let rows = `<div className="summary-row"><span className="k">Serviço</span><span className="v">${service.name}</span></div>`;
-      if (pro) rows += `<div className="summary-row"><span className="k">Profissional</span><span className="v">${pro.name}</span></div>`;
-      if (selectedDate) rows += `<div className="summary-row"><span className="k">Data</span><span className="v">${formatSelectedDate()}</span></div>`;
-      if (selectedTime) rows += `<div className="summary-row"><span className="k">Horário</span><span className="v">${selectedTime}</span></div>`;
-      return `<h4>Seu agendamento</h4>${rows}<div className="summary-total"><span className="k">Total</span><span className="v">${formatPrice(service.price)}</span></div>`;
-    };
+    const renderSummary = () => (
+      <aside className="summary-card">
+        <h4>Seu agendamento</h4>
+        {!service ? (
+          <p className="summary-empty">Escolha um serviço para começar.</p>
+        ) : (
+          <>
+            <div className="summary-item">
+              <div className="si-main">{service.name}</div>
+              <div className="si-sub">{service.duration} min</div>
+            </div>
+            {selectedDate && selectedTime && (
+              <div className="summary-item">
+                <div className="si-main">{formatSelectedDateShort()} · {selectedTime}</div>
+                <div className="si-sub">Data e horário</div>
+              </div>
+            )}
+            <div className="summary-total">
+              <span className="v">{formatPrice(service.price)}</span>
+              <span className="k">Total</span>
+            </div>
+          </>
+        )}
+      </aside>
+    );
 
     return (
-      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
         <h3>Quase pronto!</h3>
         <p className="step-sub">Informe seus dados para confirmarmos o agendamento.</p>
-        <div className="step4-grid">
-          <div>
+        <div className="row g-4">
+          <div className="col-12 col-lg-7">
             <div className={`field ${fieldErrors.name ? 'invalid' : ''}`}>
               <label htmlFor="inpName">Nome completo</label>
               <input
@@ -393,17 +387,19 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
               <span className="err">Informe um e-mail válido.</span>
             </div>
           </div>
-          <div className="summary-card" dangerouslySetInnerHTML={{ __html: summaryHTML() }} />
+          <div className="col-12 col-lg-5">
+            {renderSummary()}
+          </div>
         </div>
         <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(3)}>← Voltar</button>
+          <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
           <button
             className="btn btn-primary"
             onClick={() => {
-              if (validateStep4()) setStep(5);
+              if (validateStep4()) setStep(4);
             }}
           >
-            Ir para pagamento →
+            Continuar →
           </button>
         </div>
       </div>
@@ -414,7 +410,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
     const amount = service ? formatPrice(service.price) : formatPrice(0);
 
     return (
-      <div className="step-panel" style={{ display: step === 5 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
         <h3>Como deseja pagar?</h3>
         <p className="step-sub">Escolha a forma de pagamento para concluir.</p>
         <div className="pay-tabs">
@@ -444,7 +440,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
             <div className="pix-info">
               <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
               <div className="pix-amount">{amount}</div>
-              <button className="btn btn-primary" onClick={() => setStep(6)}>
+              <button className="btn btn-primary" onClick={() => setStep(5)}>
                 Já realizei o pagamento
               </button>
             </div>
@@ -484,14 +480,14 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
             <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
             <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
             <div className="amt">{amount}</div>
-            <button className="btn btn-primary" onClick={() => setStep(6)}>
+            <button className="btn btn-primary" onClick={() => setStep(5)}>
               Confirmar agendamento
             </button>
           </div>
         </div>
 
         <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(4)}>← Voltar</button>
+          <button className="btn btn-ghost" onClick={() => setStep(3)}>← Voltar</button>
           <span></span>
         </div>
       </div>
@@ -500,7 +496,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
 
   const renderConfirmation = () => {
     return (
-      <div className="step-panel" style={{ display: step === 6 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 5 ? 'block' : 'none' }}>
         <div className="confirm-panel">
           <div className="check-circle">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -512,7 +508,7 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
           <div className="confirm-summary">
             <div className="cs-date">{formatSelectedDateLong()}</div>
             <div className="cs-time">{selectedTime}</div>
-            <div className="cs-line"><b>{pro?.name}</b><br/>{service?.name}</div>
+            <div className="cs-line"><b>{service?.name}</b></div>
             <div className="cs-total">{formatPrice(service?.price || 0)}</div>
           </div>
           <div className="confirm-actions">
@@ -538,10 +534,9 @@ const Booking = ({ preSelectedService, preSelectedPro }) => {
         </div>
 
         <div className="booking-shell">
-          {step !== 6 && renderProgress()}
+          {step !== 5 && renderProgress()}
           {renderStep1()}
-          {renderStep2()}
-          {renderStep3()}
+          {renderDateStep()}
           {renderStep4()}
           {renderStep5()}
           {renderConfirmation()}

@@ -1,5 +1,35 @@
+import { HERO_STATS } from '../data/constants';
+
+const ICONS = {
+  calendar: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  ),
+  scissors: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="2.6" />
+      <circle cx="6" cy="18" r="2.6" />
+      <path d="M8 7.5L20 19M8 16.5L20 5" />
+    </svg>
+  ),
+  star: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round">
+      <path d="M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z" />
+    </svg>
+  ),
+};
+
+const Arrow = () => (
+  <svg className="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
+);
+
 const Hero = () => {
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault();
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -7,67 +37,60 @@ const Hero = () => {
   };
 
   return (
-    <section className="hero" id="inicio">
-      <div className="wrap">
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <div style={{ width: '36px', height: '2px', background: 'var(--gold)' }}></div>
-            <span>Desde 2011 — Curitiba</span>
-          </div>
-          <h1>Seu estilo.<br/><em>Seu momento.</em></h1>
-          <p className="sub">Cuidados, cortes e experiências pensadas para você.</p>
-          <div className="hero-actions">
-            <a 
-              href="#agendamento" 
-              className="btn btn-primary"
-              onClick={(e) => { e.preventDefault(); scrollToSection('agendamento'); }}
-            >
-              Agendar horário
-            </a>
-            <a 
-              href="#servicos" 
-              className="btn btn-outline-cream"
-              onClick={(e) => { e.preventDefault(); scrollToSection('servicos'); }}
-            >
-              Conhecer serviços
-            </a>
-          </div>
-          <div className="hero-stats">
-            <div><b>13</b><span>Anos de tradição</span></div>
-            <div><b>3</b><span>Especialistas</span></div>
-            <div><b>4.9</b><span>Avaliação média</span></div>
-          </div>
-        </div>
-        <div className="hero-art">
-          <div className="hero-frame">
-            <div className="pole-thread barberpole hero-corner left"></div>
-            <div className="pole-thread barberpole hero-corner right"></div>
-            <div className="inner-border">
-              <img 
-                src="/assets/LogoNE.jpeg" 
-                alt="Logo Barbearia Novo Estilo" 
-                style={{ width: '100%', height: 'auto', display: 'block', background: 'var(--navy)' }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = `
-                    <svg viewBox="0 0 520 620" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;background:var(--navy)">
-                      <rect width="520" height="620" fill="#121214"/>
-                      <circle cx="260" cy="320" r="190" fill="none" stroke="#C7CCD0" strokeWidth="1.2"/>
-                      <circle cx="260" cy="320" r="176" fill="none" stroke="#C7CCD0" strokeWidth="0.6" opacity="0.5"/>
-                      <text x="260" y="300" textAnchor="middle" fontFamily="Playfair Display, serif" fontWeight="600" fontSize="50" fill="#F2F2F0" letterSpacing="6">BARBEARIA</text>
-                      <line x1="150" y1="330" x2="196" y2="330" stroke="#C7CCD0" strokeWidth="1"/>
-                      <text x="260" y="337" textAnchor="middle" fontFamily="Inter, sans-serif" fontWeight="600" fontSize="19" fill="#C7CCD0" letterSpacing="6">NOVO ESTILO</text>
-                      <line x1="324" y1="330" x2="370" y2="330" stroke="#C7CCD0" strokeWidth="1"/>
-                      <text x="260" y="560" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="11" fill="#C7CCD0" letterSpacing="4">EST. 2011 · CURITIBA</text>
-                    </svg>
-                  `;
-                }}
-              />
+    <>
+      <section className="hero" id="inicio">
+        <div
+          className="hero-photo"
+          style={{ backgroundImage: "url('/assets/hero.jpg')" }}
+          role="img"
+          aria-label="Barbeiro trabalhando no corte de um cliente"
+        ></div>
+        <div className="container hero-content">
+          <div className="row">
+            <div className="col-12 col-lg-7 col-xl-6 hero-copy">
+              <div className="eyebrow">
+                <span className="eyebrow-rule"></span>
+                <span>Desde 2011 · Curitiba</span>
+              </div>
+              <h1>Seu estilo.<br />Seu momento.</h1>
+              <p className="sub">Cortes clássicos.<br />Precisão moderna.</p>
+              <div className="hero-actions">
+                <a
+                  href="#agendamento"
+                  className="btn btn-primary"
+                  onClick={(e) => scrollToSection(e, 'agendamento')}
+                >
+                  Agendar horário <Arrow />
+                </a>
+                <a
+                  href="#servicos"
+                  className="btn btn-outline-cream"
+                  onClick={(e) => scrollToSection(e, 'servicos')}
+                >
+                  Conhecer serviços <Arrow />
+                </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <section className="hero-stats-bar" aria-label="Indicadores">
+        <div className="container">
+          <div className="row g-0">
+            {HERO_STATS.map((stat) => (
+              <div className="col-12 col-md-4 stat-item" key={stat.label}>
+                <span className="stat-icon">{ICONS[stat.icon]}</span>
+                <div>
+                  <b>{stat.value}</b>
+                  <span>{stat.label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 };
 
