@@ -1,6 +1,6 @@
 # Funcionalidades — Painel admin (`frontend/src/admin`)
 
-Acesso: `/admin.html`. Sem autenticação. Layout: `AdminSidebar` (colapsável, ←/→) + `<main>` com a aba ativa (`activeTab` em `AdminPanel`). "Sair" redireciona para `/`.
+Acesso: `/admin.html`. Sem autenticação. UI feita com classes do Bootstrap 5 (grid `row/col`, `card`, `table`, `form-*`, `btn`, `badge`, `alert`, `list-group`); modais via `AdminModal` (markup `.modal` do Bootstrap, sem o JS do Bootstrap). Layout: `AdminSidebar` (colapsável, ←/→) + `<main>` com a aba ativa (`activeTab` em `AdminPanel`). "Sair" redireciona para `/`.
 
 ## Aba Agenda (`AgendaTab.jsx`) — aba inicial
 Estado: `appointmentsList` (cópia do mock), `view` (`calendar`|`day`), `selectedDate`, modais.

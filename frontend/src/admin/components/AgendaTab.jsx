@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { appointments, professionals, services, statusLabels } from '../data/mockData';
+import { appointments, professionals, services } from '../data/mockData';
+import PageHeader from './PageHeader';
 import Calendar from './Calendar';
 import DailySchedule from './DailySchedule';
 import AppointmentModal from './AppointmentModal';
@@ -71,21 +72,14 @@ const AgendaTab = () => {
   };
 
   return (
-    <div className="admin-content">
+    <div>
       {view === 'calendar' ? (
         <>
-          <div className="page-header">
-            <div className="page-title-section">
-              <h1 className="page-title">Agenda</h1>
-              <p className="page-subtitle">Gerencie seus agendamentos</p>
-            </div>
-            <div className="page-actions">
-              <button className="action-btn primary-btn" onClick={handleCreateReservation}>
-                <span className="btn-icon">+</span>
-                Criar Reserva Manual
-              </button>
-            </div>
-          </div>
+          <PageHeader title="Agenda" subtitle="Gerencie seus agendamentos">
+            <button className="btn btn-primary" onClick={handleCreateReservation}>
+              + Criar Reserva Manual
+            </button>
+          </PageHeader>
           <Calendar
             onDateSelect={handleDateSelect}
             appointments={appointmentsList}
@@ -93,13 +87,11 @@ const AgendaTab = () => {
         </>
       ) : (
         <>
-          <div className="page-header">
-            <div className="page-title-section">
-              <button className="action-btn secondary-btn" onClick={handleBackToCalendar}>
-                ← Voltar
-              </button>
-            </div>
-          </div>
+          <PageHeader>
+            <button className="btn btn-outline-secondary" onClick={handleBackToCalendar}>
+              ← Voltar
+            </button>
+          </PageHeader>
           <DailySchedule
             date={selectedDate}
             appointments={appointmentsList}

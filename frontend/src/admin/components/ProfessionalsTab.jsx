@@ -1,27 +1,28 @@
 import { useState } from 'react';
 import { professionals } from '../data/mockData';
+import AdminModal from './AdminModal';
+import PageHeader from './PageHeader';
+import StatusBadge from './StatusBadge';
+
+const EMPTY_FORM = { name: '', role: '', initials: '', status: 'ativo' };
+
+const generateInitials = (name) =>
+  name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
 const ProfessionalsTab = () => {
   const [professionalsList, setProfessionalsList] = useState(professionals);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [modal, setModal] = useState(null); // null | 'create' | 'edit' | 'delete'
   const [selectedProfessional, setSelectedProfessional] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    role: '',
-    initials: '',
-    status: 'ativo'
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
 
   const handleCreate = () => {
-    setFormData({
-      name: '',
-      role: '',
-      initials: '',
-      status: 'ativo'
-    });
-    setShowCreateModal(true);
+    setFormData(EMPTY_FORM);
+    setModal('create');
   };
 
   const handleEdit = (professional) => {
@@ -32,305 +33,176 @@ const ProfessionalsTab = () => {
       initials: professional.initials,
       status: professional.status || 'ativo'
     });
-    setShowEditModal(true);
+    setModal('edit');
   };
 
   const handleDelete = (professional) => {
     setSelectedProfessional(professional);
-    setShowDeleteModal(true);
+    setModal('delete');
   };
 
-  const handleCloseCreateModal = () => {
-    setShowCreateModal(false);
-    setFormData({
-      name: '',
-      role: '',
-      initials: '',
-      status: 'ativo'
-    });
-  };
-
-  const handleCloseEditModal = () => {
-    setShowEditModal(false);
+  const handleCloseModal = () => {
+    setModal(null);
     setSelectedProfessional(null);
+    setFormData(EMPTY_FORM);
   };
 
-  const handleCloseDeleteModal = () => {
-    setShowDeleteModal(false);
-    setSelectedProfessional(null);
-  };
-
-  const handleCreateSubmit = () => {
+  const handleSubmit = () => {
     if (!formData.name || !formData.role || !formData.initials) {
       return;
     }
 
-    const newProfessional = {
-      id: Date.now(),
-      name: formData.name,
-      role: formData.role,
-      initials: formData.initials,
-      status: formData.status
-    };
-
-    setProfessionalsList([...professionalsList, newProfessional]);
-    handleCloseCreateModal();
-  };
-
-  const handleEditSubmit = () => {
-    if (!formData.name || !formData.role || !formData.initials) {
-      return;
+    if (modal === 'create') {
+      setProfessionalsList([...professionalsList, { id: Date.now(), ...formData }]);
+    } else {
+      setProfessionalsList(
+        professionalsList.map(professional =>
+          professional.id === selectedProfessional.id
+            ? { ...selectedProfessional, ...formData }
+            : professional
+        )
+      );
     }
-
-    const updatedProfessional = {
-      ...selectedProfessional,
-      name: formData.name,
-      role: formData.role,
-      initials: formData.initials,
-      status: formData.status
-    };
-
-    setProfessionalsList(
-      professionalsList.map(professional =>
-        professional.id === selectedProfessional.id ? updatedProfessional : professional
-      )
-    );
-    handleCloseEditModal();
+    handleCloseModal();
   };
 
   const handleDeleteConfirm = () => {
     setProfessionalsList(professionalsList.filter(professional => professional.id !== selectedProfessional.id));
-    handleCloseDeleteModal();
+    handleCloseModal();
   };
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const generateInitials = (name) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const handleNameChange = (e) => {
     const name = e.target.value;
-    handleInputChange('name', name);
-    if (name) {
-      handleInputChange('initials', generateInitials(name));
-    }
+    setFormData({
+      ...formData,
+      name,
+      initials: name ? generateInitials(name) : formData.initials
+    });
   };
 
   return (
-    <div className="admin-content">
-      <div className="page-header">
-        <div className="page-title-section">
-          <h1 className="page-title">Profissionais</h1>
-          <p className="page-subtitle">Gerencie os profissionais da equipe</p>
-        </div>
-        <div className="page-actions">
-          <button className="action-btn primary-btn" onClick={handleCreate}>
-            <span className="btn-icon">+</span>
-            Adicionar Profissional
-          </button>
-        </div>
-      </div>
+    <div>
+      <PageHeader title="Profissionais" subtitle="Gerencie os profissionais da equipe">
+        <button className="btn btn-primary" onClick={handleCreate}>+ Adicionar Profissional</button>
+      </PageHeader>
 
-      <div className="services-table-section">
-        <div className="table-card">
-          <div className="table-container">
-            <table className="appointments-table">
-              <thead>
-                <tr>
-                  <th>Profissional</th>
-                  <th>Cargo</th>
-                  <th>Iniciais</th>
-                  <th>Status</th>
-                  <th>Ações</th>
+      <div className="card">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Profissional</th>
+                <th>Cargo</th>
+                <th>Iniciais</th>
+                <th>Status</th>
+                <th className="text-end">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {professionalsList.map(professional => (
+                <tr key={professional.id}>
+                  <td className="fw-semibold">{professional.name}</td>
+                  <td className="text-secondary small">{professional.role}</td>
+                  <td><span className="avatar-circle avatar-sm">{professional.initials}</span></td>
+                  <td>
+                    <StatusBadge
+                      status={professional.status === 'ativo' ? 'agendado' : 'cancelado'}
+                      label={professional.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                    />
+                  </td>
+                  <td className="text-end text-nowrap">
+                    <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => handleEdit(professional)}>
+                      Editar
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(professional)}>
+                      Remover
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {professionalsList.map(professional => (
-                  <tr key={professional.id}>
-                    <td className="service-cell">
-                      <div className="service-name">{professional.name}</div>
-                    </td>
-                    <td>
-                      <div className="service-description">{professional.role}</div>
-                    </td>
-                    <td className="service-cell">
-                      <div className="professional-initials">{professional.initials}</div>
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${professional.status === 'ativo' ? 'agendado' : 'cancelado'}`}>
-                        {professional.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="actions-cell">
-                      <div className="action-buttons">
-                        <button
-                          className="action-button edit-button"
-                          onClick={() => handleEdit(professional)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="action-button view-button"
-                          onClick={() => handleDelete(professional)}
-                        >
-                          Remover
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={handleCloseCreateModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Adicionar Profissional</h3>
-              <button className="modal-close" onClick={handleCloseCreateModal}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="edit-form">
-                <div className="form-group">
-                  <label>Nome do profissional *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={handleNameChange}
-                    placeholder="Ex: João Silva"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Cargo *</label>
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={(e) => handleInputChange('role', e.target.value)}
-                    placeholder="Ex: Cabeleireiro"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Iniciais *</label>
-                  <input
-                    type="text"
-                    value={formData.initials}
-                    onChange={(e) => handleInputChange('initials', e.target.value)}
-                    placeholder="Ex: JS"
-                    maxLength={2}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                  >
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="modal-button secondary-button" onClick={handleCloseCreateModal}>
-                ← Voltar
+      {(modal === 'create' || modal === 'edit') && (
+        <AdminModal
+          title={modal === 'create' ? 'Adicionar Profissional' : 'Editar Profissional'}
+          onClose={handleCloseModal}
+          footer={
+            <>
+              <button className="btn btn-outline-secondary" onClick={handleCloseModal}>← Voltar</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>
+                {modal === 'create' ? 'Salvar Profissional' : 'Salvar Alterações'}
               </button>
-              <button className="modal-button primary-button" onClick={handleCreateSubmit}>
-                Salvar Profissional
-              </button>
+            </>
+          }
+        >
+          <div className="row g-3">
+            <div className="col-12">
+              <label className="form-label">Nome do profissional *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={formData.name}
+                onChange={handleNameChange}
+                placeholder="Ex: João Silva"
+              />
+            </div>
+            <div className="col-12">
+              <label className="form-label">Cargo *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={formData.role}
+                onChange={(e) => handleInputChange('role', e.target.value)}
+                placeholder="Ex: Cabeleireiro"
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Iniciais *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={formData.initials}
+                onChange={(e) => handleInputChange('initials', e.target.value)}
+                placeholder="Ex: JS"
+                maxLength={2}
+              />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Status</label>
+              <select
+                className="form-select"
+                value={formData.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+              >
+                <option value="ativo">Ativo</option>
+                <option value="inativo">Inativo</option>
+              </select>
             </div>
           </div>
-        </div>
+        </AdminModal>
       )}
 
-      {showEditModal && (
-        <div className="modal-overlay" onClick={handleCloseEditModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Editar Profissional</h3>
-              <button className="modal-close" onClick={handleCloseEditModal}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="edit-form">
-                <div className="form-group">
-                  <label>Nome do profissional *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={handleNameChange}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Cargo *</label>
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={(e) => handleInputChange('role', e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Iniciais *</label>
-                  <input
-                    type="text"
-                    value={formData.initials}
-                    onChange={(e) => handleInputChange('initials', e.target.value)}
-                    maxLength={2}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                  >
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="modal-button secondary-button" onClick={handleCloseEditModal}>
-                ← Voltar
-              </button>
-              <button className="modal-button primary-button" onClick={handleEditSubmit}>
-                Salvar Alterações
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={handleCloseDeleteModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Remover este profissional?</h3>
-            </div>
-            <div className="modal-body">
-              <p>Este profissional não aparecerá mais para novos agendamentos.</p>
-            </div>
-            <div className="modal-footer">
-              <button className="modal-button secondary-button" onClick={handleCloseDeleteModal}>
-                Voltar
-              </button>
-              <button className="modal-button primary-button" onClick={handleDeleteConfirm}>
-                Confirmar Remoção
-              </button>
-            </div>
-          </div>
-        </div>
+      {modal === 'delete' && (
+        <AdminModal
+          title="Remover este profissional?"
+          onClose={handleCloseModal}
+          showClose={false}
+          footer={
+            <>
+              <button className="btn btn-outline-secondary" onClick={handleCloseModal}>Voltar</button>
+              <button className="btn btn-primary" onClick={handleDeleteConfirm}>Confirmar Remoção</button>
+            </>
+          }
+        >
+          <p className="mb-0">Este profissional não aparecerá mais para novos agendamentos.</p>
+        </AdminModal>
       )}
     </div>
   );

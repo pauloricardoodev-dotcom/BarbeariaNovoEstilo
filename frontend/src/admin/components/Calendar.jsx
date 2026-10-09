@@ -46,67 +46,67 @@ const Calendar = ({ onDateSelect, appointments }) => {
   const blankDays = Array(firstDay).fill(null);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  const LEGEND = [
+    ['empty', 'Sem reservas'],
+    ['low', 'Poucas reservas'],
+    ['medium', 'Muitas reservas'],
+    ['full', 'Dia cheio'],
+  ];
+
   return (
-    <div className="calendar-wrapper">
-      <div className="calendar-header">
-        <button className="calendar-nav" onClick={handlePreviousMonth}>
-          ←
-        </button>
-        <h4>
-          {MONTHS[currentDate.getMonth()].toUpperCase()} {currentDate.getFullYear()}
-        </h4>
-        <button className="calendar-nav" onClick={handleNextMonth}>
-          →
-        </button>
-      </div>
+    <div className="card calendar-card">
+      <div className="card-body p-3 p-md-4">
+        <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom">
+          <button className="btn btn-outline-secondary btn-sm" onClick={handlePreviousMonth} aria-label="Mês anterior">
+            ←
+          </button>
+          <h4 className="h5 mb-0 calendar-title">
+            {MONTHS[currentDate.getMonth()].toUpperCase()} {currentDate.getFullYear()}
+          </h4>
+          <button className="btn btn-outline-secondary btn-sm" onClick={handleNextMonth} aria-label="Próximo mês">
+            →
+          </button>
+        </div>
 
-      <div className="calendar-weekdays">
-        {WEEKDAYS.map(day => (
-          <div key={day} className="calendar-weekday">
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="calendar-grid">
-        {blankDays.map((_, index) => (
-          <div key={`blank-${index}`} className="calendar-day empty" />
-        ))}
-        {days.map(day => {
-          const occupancy = getDayOccupancyLevel(day);
-          const dayAppointments = getAppointmentsForDayByMonth(day, currentDate.getMonth(), currentDate.getFullYear());
-          
-          return (
-            <div
-              key={day}
-              className={`calendar-day ${occupancy}`}
-              onClick={() => handleDayClick(day)}
-            >
-              <span className="day-number">{day}</span>
-              {dayAppointments.length > 0 && (
-                <span className="appointment-count">{dayAppointments.length}</span>
-              )}
+        <div className="calendar-grid mb-1">
+          {WEEKDAYS.map(day => (
+            <div key={day} className="calendar-weekday text-center text-secondary text-uppercase fw-semibold py-2">
+              {day}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      <div className="calendar-legend">
-        <div className="legend-item">
-          <div className="legend-color empty"></div>
-          <span>Sem reservas</span>
+        <div className="calendar-grid">
+          {blankDays.map((_, index) => (
+            <div key={`blank-${index}`} />
+          ))}
+          {days.map(day => {
+            const occupancy = getDayOccupancyLevel(day);
+            const dayAppointments = getAppointmentsForDayByMonth(day, currentDate.getMonth(), currentDate.getFullYear());
+
+            return (
+              <button
+                type="button"
+                key={day}
+                className={`calendar-day ${occupancy}`}
+                onClick={() => handleDayClick(day)}
+              >
+                <span className="day-number">{day}</span>
+                {dayAppointments.length > 0 && (
+                  <span className="appointment-count">{dayAppointments.length}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        <div className="legend-item">
-          <div className="legend-color low"></div>
-          <span>Poucas reservas</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-color medium"></div>
-          <span>Muitas reservas</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-color full"></div>
-          <span>Dia cheio</span>
+
+        <div className="d-flex flex-wrap gap-3 mt-3 pt-3 border-top small">
+          {LEGEND.map(([level, label]) => (
+            <div key={level} className="d-flex align-items-center gap-2">
+              <span className={`legend-color ${level}`} />
+              <span>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

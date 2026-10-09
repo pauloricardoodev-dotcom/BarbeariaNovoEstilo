@@ -1,0 +1,42 @@
+# Compilado
+/dist
+/build
+
+# Dependências
+/node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testes
+/coverage
+/.nyc_output
+
+# Ambiente / segredos
+.env
+.env.*
+!.env.example
+
+# Banco local / uploads
+*.sqlite
+*.sqlite3
+*.db
+/uploads
+
+# Editor / SO
+/.vscode/*
+!/.vscode/extensions.json
+/.idea
+.DS_Store
+Thumbs.db
+*.swp
+
+# Temporários
+*.tsbuildinfo
+/tmp

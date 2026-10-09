@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { statusLabels } from '../data/mockData';
+import AdminModal from './AdminModal';
+import StatusBadge from './StatusBadge';
 
 const AppointmentModal = ({ appointment, onClose, onUpdate, onCancel, onComplete, professionals, services, appointments }) => {
   const [mode, setMode] = useState('view'); // 'view', 'edit', 'confirm-cancel', 'confirm-complete'
@@ -27,8 +28,8 @@ const AppointmentModal = ({ appointment, onClose, onUpdate, onCancel, onComplete
   const handleSave = () => {
     // Check if time slot is available
     const conflict = appointments.find(
-      apt => apt.date === editedAppointment.date && 
-             apt.time === editedAppointment.time && 
+      apt => apt.date === editedAppointment.date &&
+             apt.time === editedAppointment.time &&
              apt.id !== editedAppointment.id &&
              apt.status !== 'cancelado'
     );
@@ -56,220 +57,189 @@ const AppointmentModal = ({ appointment, onClose, onUpdate, onCancel, onComplete
 
   if (mode === 'confirm-cancel') {
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3 className="modal-title">Cancelar este agendamento?</h3>
-          </div>
-          <div className="modal-body">
-            <p>Esta ação irá liberar o horário na agenda.</p>
-          </div>
-          <div className="modal-footer">
-            <button className="modal-button secondary-button" onClick={handleBack}>
-              Voltar
-            </button>
-            <button className="modal-button primary-button" onClick={handleConfirmCancel}>
-              Confirmar Cancelamento
-            </button>
-          </div>
-        </div>
-      </div>
+      <AdminModal
+        title="Cancelar este agendamento?"
+        onClose={onClose}
+        showClose={false}
+        footer={
+          <>
+            <button className="btn btn-outline-secondary" onClick={handleBack}>Voltar</button>
+            <button className="btn btn-primary" onClick={handleConfirmCancel}>Confirmar Cancelamento</button>
+          </>
+        }
+      >
+        <p className="mb-0">Esta ação irá liberar o horário na agenda.</p>
+      </AdminModal>
     );
   }
 
   if (mode === 'confirm-complete') {
     return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3 className="modal-title">Concluir este atendimento?</h3>
-          </div>
-          <div className="modal-body">
-            <p>Este atendimento será marcado como concluído e o valor será contabilizado no faturamento.</p>
-          </div>
-          <div className="modal-footer">
-            <button className="modal-button secondary-button" onClick={handleBack}>
-              Voltar
-            </button>
-            <button className="modal-button primary-button" onClick={handleConfirmComplete}>
-              Confirmar Conclusão
-            </button>
-          </div>
-        </div>
-      </div>
+      <AdminModal
+        title="Concluir este atendimento?"
+        onClose={onClose}
+        showClose={false}
+        footer={
+          <>
+            <button className="btn btn-outline-secondary" onClick={handleBack}>Voltar</button>
+            <button className="btn btn-primary" onClick={handleConfirmComplete}>Confirmar Conclusão</button>
+          </>
+        }
+      >
+        <p className="mb-0">Este atendimento será marcado como concluído e o valor será contabilizado no faturamento.</p>
+      </AdminModal>
     );
   }
 
+  const footer = mode === 'view' ? (
+    <>
+      <button className="btn btn-outline-secondary" onClick={handleEdit}>Editar Reserva</button>
+      {appointment.status === 'agendado' && (
+        <>
+          <button className="btn btn-outline-secondary" onClick={handleCancelClick}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleCompleteClick}>Concluir Corte</button>
+        </>
+      )}
+    </>
+  ) : (
+    <>
+      <button className="btn btn-outline-secondary" onClick={handleBack}>← Voltar</button>
+      <button className="btn btn-primary" onClick={handleSave}>Salvar Alterações</button>
+    </>
+  );
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">
-            {mode === 'edit' ? 'Editar Reserva' : appointment.client.name}
-          </h3>
-          <button className="modal-close" onClick={onClose}>×</button>
+    <AdminModal
+      title={mode === 'edit' ? 'Editar Reserva' : appointment.client.name}
+      onClose={onClose}
+      footer={footer}
+    >
+      {mode === 'view' ? (
+        <div className="d-flex flex-column gap-3">
+          <div className="d-flex align-items-center gap-3">
+            <div className="avatar-circle">{appointment.client.initials}</div>
+            <div>
+              <div className="fw-semibold">{appointment.client.name}</div>
+              <div className="text-secondary small">{appointment.client.phone}</div>
+            </div>
+          </div>
+
+          <div>
+            <div className="section-label">Serviço</div>
+            <div className="card card-body py-2 flex-row justify-content-between">
+              <span>{appointment.service.name}</span>
+              <span className="fw-semibold">R$ {appointment.service.price.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="section-label">Profissional</div>
+            <div className="card card-body py-2">
+              <div className="fw-semibold">{appointment.professional.name}</div>
+              <div className="text-secondary small">{appointment.professional.role}</div>
+            </div>
+          </div>
+
+          <div className="row g-3">
+            <div className="col-6">
+              <div className="section-label">Data</div>
+              <div>{appointment.date}</div>
+            </div>
+            <div className="col-6">
+              <div className="section-label">Horário</div>
+              <div>{appointment.time}</div>
+            </div>
+          </div>
+
+          <div>
+            <div className="section-label">Status</div>
+            <StatusBadge status={appointment.status} />
+          </div>
         </div>
-
-        <div className="modal-body">
-          {mode === 'view' ? (
-            <>
-              <div className="detail-section">
-                <div className="client-detail-card">
-                  <div className="client-detail-avatar">{appointment.client.initials}</div>
-                  <div className="client-detail-info">
-                    <div className="client-detail-name">{appointment.client.name}</div>
-                    <div className="client-detail-phone">{appointment.client.phone}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <div className="detail-section-title">Serviço</div>
-                <div className="service-detail-card">
-                  <div className="service-detail-name">{appointment.service.name}</div>
-                  <div className="service-detail-price">R$ {appointment.service.price.toFixed(2)}</div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <div className="detail-section-title">Profissional</div>
-                <div className="professional-detail-card">
-                  <div className="professional-detail-name">{appointment.professional.name}</div>
-                  <div className="professional-detail-role">{appointment.professional.role}</div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <div className="detail-grid">
-                  <div className="detail-item">
-                    <div className="detail-label">Data</div>
-                    <div className="detail-value">{appointment.date}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Horário</div>
-                    <div className="detail-value">{appointment.time}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-section">
-                <div className="detail-section-title">Status</div>
-                <div className={`status-badge status-${appointment.status}`}>
-                  {statusLabels[appointment.status]}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="edit-form">
-              {error && <div className="error-message">{error}</div>}
-              
-              <div className="form-group">
-                <label>Nome do Cliente</label>
-                <input
-                  type="text"
-                  value={editedAppointment.client.name}
-                  onChange={(e) => handleInputChange('client', { ...editedAppointment.client, name: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Telefone</label>
-                <input
-                  type="text"
-                  value={editedAppointment.client.phone}
-                  onChange={(e) => handleInputChange('client', { ...editedAppointment.client, phone: e.target.value })}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Serviço</label>
-                  <select
-                    value={editedAppointment.service.name}
-                    onChange={(e) => {
-                      const service = services.find(s => s.name === e.target.value);
-                      handleInputChange('service', service);
-                    }}
-                  >
-                    {services.map(service => (
-                      <option key={service.id} value={service.name}>
-                        {service.name} — R$ {service.price}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>Profissional</label>
-                  <select
-                    value={editedAppointment.professional.name}
-                    onChange={(e) => {
-                      const professional = professionals.find(p => p.name === e.target.value);
-                      handleInputChange('professional', professional);
-                    }}
-                  >
-                    {professionals.map(pro => (
-                      <option key={pro.id} value={pro.name}>
-                        {pro.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Data</label>
-                  <input
-                    type="text"
-                    value={editedAppointment.date}
-                    onChange={(e) => handleInputChange('date', e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Horário</label>
-                  <input
-                    type="text"
-                    value={editedAppointment.time}
-                    onChange={(e) => handleInputChange('time', e.target.value)}
-                  />
-                </div>
-              </div>
+      ) : (
+        <div className="row g-3">
+          {error && (
+            <div className="col-12">
+              <div className="alert alert-danger py-2 mb-0">{error}</div>
             </div>
           )}
-        </div>
 
-        <div className="modal-footer">
-          {mode === 'view' ? (
-            <>
-              <button className="modal-button secondary-button" onClick={handleEdit}>
-                Editar Reserva
-              </button>
-              {appointment.status === 'agendado' && (
-                <>
-                  <button className="modal-button secondary-button" onClick={handleCancelClick}>
-                    Cancelar
-                  </button>
-                  <button className="modal-button primary-button" onClick={handleCompleteClick}>
-                    Concluir Corte
-                  </button>
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              <button className="modal-button secondary-button" onClick={handleBack}>
-                ← Voltar
-              </button>
-              <button className="modal-button primary-button" onClick={handleSave}>
-                Salvar Alterações
-              </button>
-            </>
-          )}
+          <div className="col-12">
+            <label className="form-label">Nome do Cliente</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editedAppointment.client.name}
+              onChange={(e) => handleInputChange('client', { ...editedAppointment.client, name: e.target.value })}
+            />
+          </div>
+
+          <div className="col-12">
+            <label className="form-label">Telefone</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editedAppointment.client.phone}
+              onChange={(e) => handleInputChange('client', { ...editedAppointment.client, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Serviço</label>
+            <select
+              className="form-select"
+              value={editedAppointment.service.name}
+              onChange={(e) => {
+                const service = services.find(s => s.name === e.target.value);
+                handleInputChange('service', service);
+              }}
+            >
+              {services.map(service => (
+                <option key={service.id} value={service.name}>
+                  {service.name} — R$ {service.price}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Profissional</label>
+            <select
+              className="form-select"
+              value={editedAppointment.professional.name}
+              onChange={(e) => {
+                const professional = professionals.find(p => p.name === e.target.value);
+                handleInputChange('professional', professional);
+              }}
+            >
+              {professionals.map(pro => (
+                <option key={pro.id} value={pro.name}>{pro.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Data</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editedAppointment.date}
+              onChange={(e) => handleInputChange('date', e.target.value)}
+            />
+          </div>
+
+          <div className="col-md-6">
+            <label className="form-label">Horário</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editedAppointment.time}
+              onChange={(e) => handleInputChange('time', e.target.value)}
+            />
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </AdminModal>
   );
 };
 

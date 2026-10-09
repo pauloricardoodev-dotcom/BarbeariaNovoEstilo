@@ -5,7 +5,6 @@ import DashboardTab from './components/DashboardTab';
 import ServicesTab from './components/ServicesTab';
 import ProfessionalsTab from './components/ProfessionalsTab';
 import SettingsTab from './components/SettingsTab';
-import './styles/admin.css';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('agenda');
@@ -17,18 +16,20 @@ const AdminPanel = () => {
 
   return (
     <div className="admin-layout">
-      <AdminSidebar 
+      <AdminSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         collapsed={sidebarCollapsed}
         onToggle={toggleSidebar}
       />
       <main className={`admin-main ${sidebarCollapsed ? 'sidebar-closed' : ''}`}>
-        {activeTab === 'agenda' && <AgendaTab />}
-        {activeTab === 'dashboard' && <DashboardTab />}
-        {activeTab === 'services' && <ServicesTab />}
-        {activeTab === 'professionals' && <ProfessionalsTab />}
-        {activeTab === 'settings' && <SettingsTab />}
+        <div className="container-xxl py-4 px-3 px-md-4">
+          {activeTab === 'agenda' && <AgendaTab />}
+          {activeTab === 'dashboard' && <DashboardTab />}
+          {activeTab === 'services' && <ServicesTab />}
+          {activeTab === 'professionals' && <ProfessionalsTab />}
+          {activeTab === 'settings' && <SettingsTab />}
+        </div>
       </main>
     </div>
   );
