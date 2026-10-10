@@ -40,3 +40,6 @@ Thumbs.db
 # Temporários
 *.tsbuildinfo
 /tmp
+
+# Prisma Client gerado (npm run prisma:generate)
+/src/generated

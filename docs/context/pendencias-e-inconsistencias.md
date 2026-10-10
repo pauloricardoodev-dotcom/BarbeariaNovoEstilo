@@ -1,10 +1,10 @@
 # Pendências e inconsistências conhecidas
 
 ## Funcionalidades simuladas / incompletas
-- Sem backend: agendamentos do site **não chegam** ao admin; nada persiste.
+- Backend só tem login do admin: agendamentos do site **não chegam** ao admin; o resto não persiste.
 - Disponibilidade de horários no site é um hash falso (`slotUnavailable`), não consulta a agenda.
 - Pagamento (Pix QR, cartão) é demonstração; cartão sem validação.
-- Admin sem login; Configurações não salva; botão de notificações/Navbar não usados.
+- Configurações não salva; botão de notificações/Navbar não usados.
 - Admin: criar/editar/remover serviço ou profissional não afeta Agenda, Dashboard nem o site.
 - Conflito de horário na Agenda ignora profissional (dois profissionais não podem atender no mesmo horário).
 - Dashboard usa mock estático, não o estado da Agenda; meses exibidos partem da data atual, mas o mock é de 09/2026.

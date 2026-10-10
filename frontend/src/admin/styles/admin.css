@@ -381,3 +381,23 @@
     font-size: 0.5625rem;
   }
 }
+
+/* ===== LOGIN ===== */
+.login-page {
+  min-height: 100vh;
+  background: var(--navy);
+}
+
+.login-card {
+  max-width: 420px;
+  --bs-card-border-radius: 8px;
+}
+
+.login-card .logo-icon {
+  color: #fff;
+}
+
+.sidebar-user {
+  font-size: 0.8125rem;
+  color: var(--gold);
+}

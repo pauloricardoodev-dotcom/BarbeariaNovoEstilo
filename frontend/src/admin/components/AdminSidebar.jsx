@@ -6,9 +6,9 @@ const NAV_ITEMS = [
   { id: 'settings', icon: '⚙️', label: 'Configurações' },
 ];
 
-const AdminSidebar = ({ activeTab, setActiveTab, collapsed, onToggle }) => {
+const AdminSidebar = ({ activeTab, setActiveTab, collapsed, onToggle, user, onLogout }) => {
   const handleLogout = () => {
-    window.location.href = '/';
+    onLogout();
   };
 
   return (
@@ -52,6 +52,11 @@ const AdminSidebar = ({ activeTab, setActiveTab, collapsed, onToggle }) => {
       </nav>
 
       <div className="sidebar-footer p-3">
+        {user && !collapsed && (
+          <div className="sidebar-user mb-2 text-truncate" title={user.email}>
+            {user.nome}
+          </div>
+        )}
         <button
           type="button"
           className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2"

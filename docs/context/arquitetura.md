@@ -6,7 +6,7 @@
 | Site público | `frontend/index.html` | `src/main.jsx` (importa `bootstrap-grid` e `bootstrap-utilities`) | `src/App.jsx` |
 | Admin | `frontend/admin.html` | `src/admin-main.jsx` (importa o Bootstrap **completo** + `admin/styles/admin.css`) | `src/admin/AdminDashboard.jsx` → `AdminPanel.jsx` |
 
-`vite.config.js` só tem o plugin React — o `admin.html` é servido em dev, mas **não há `rollupOptions.input` multi-page**, então o `build` provavelmente só gera `index.html` (verificar). Não há login/autenticação no admin; o botão "Sair" faz `window.location.href = '/'`.
+`vite.config.js` tem o plugin React e o proxy `/api` → `http://localhost:3000` (backend). **Não há `rollupOptions.input` multi-page**: confirmado que `npm run build` só gera `index.html` (o admin não entra no build). O admin exige login (ver Backend abaixo).
 
 ## Pastas (`frontend/src`)
 ```
@@ -36,3 +36,18 @@ Sem Context/Redux. Cada aba admin copia o mock para `useState` local (`AgendaTab
 
 ## Design (do site público)
 Tema escuro/grafite, off-white, vermelho escuro de destaque; Playfair Display / Cormorant Garamond (títulos) + Inter (texto). Variáveis CSS em `globals.css` (ex.: `--cream`). Briefing completo em `RefatorancaoVisual.md`.
+
+## Backend (`backend/`)
+NestJS 12 (TS, ESM) + Prisma 7 (`@prisma/adapter-pg`) sobre Supabase PostgreSQL. Testes com Vitest (`npm test` unitários em `src/**/*.spec.ts`; `npm run test:e2e` em `test/`, com Prisma fake). Prefixo global `/api`; helmet, cookie-parser e `ValidationPipe` (whitelist) em `src/configurar-app.ts`.
+```
+prisma/schema.prisma        modelos (CHECKs, triggers e RLS ficam nas migrations SQL)
+prisma/migrations/          SQL versionado; aplicar com `npm run prisma:migrate`
+prisma.config.ts            DIRECT_URL para migrations; carrega .env
+src/config/env.validation   valida DATABASE_URL, JWT_SECRET (≥32), SESSAO_DURACAO_SEGUNDOS
+src/prisma/                 PrismaService global (DATABASE_URL)
+src/auth/                   login do admin (ver abaixo)
+src/scripts/criar-admin.ts  `npm run admin:criar -- --email … --nome … [--papel SUPPORT] [--redefinir-senha]`
+src/generated/prisma        client gerado (gitignored; `postinstall` roda `prisma generate`)
+```
+**Autenticação do admin** (`src/auth`): tabela `usuarios_admin` (papéis `ADMIN` | `SUPPORT`, `ativo`, e-mail minúsculo único). `POST /api/auth/login` valida a senha (scrypt nativo, `auth/senha.ts`) e grava JWT HS256 num cookie `ne_admin_sessao` (httpOnly, SameSite=Strict, Path=/api, Secure em produção). `GET /api/auth/me` retorna o admin; `POST /api/auth/logout` apaga o cookie. **Toda rota exige sessão por padrão** (guard global); use `@Publico()` para liberar e `@Papeis('ADMIN')` para restringir por papel. A cada requisição o usuário é recarregado do banco — desativar (`ativo=false`) derruba sessões existentes. Login limitado a 5 tentativas/min por IP; resposta genérica para e-mail inexistente ou senha errada.
+Função SQL compartilhada `public.atualizar_updated_at()` (criada na migration de `usuarios_admin`) — reutilizar nos triggers das próximas tabelas.

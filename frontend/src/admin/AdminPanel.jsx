@@ -6,7 +6,7 @@ import ServicesTab from './components/ServicesTab';
 import ProfessionalsTab from './components/ProfessionalsTab';
 import SettingsTab from './components/SettingsTab';
 
-const AdminPanel = () => {
+const AdminPanel = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('agenda');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -21,6 +21,8 @@ const AdminPanel = () => {
         setActiveTab={setActiveTab}
         collapsed={sidebarCollapsed}
         onToggle={toggleSidebar}
+        user={user}
+        onLogout={onLogout}
       />
       <main className={`admin-main ${sidebarCollapsed ? 'sidebar-closed' : ''}`}>
         <div className="container-xxl py-4 px-3 px-md-4">

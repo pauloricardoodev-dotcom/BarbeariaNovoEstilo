@@ -1,0 +1,35 @@
+// Schema do banco (Supabase PostgreSQL). Constraints CHECK, triggers e RLS ficam nas migrations SQL.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PapelAdmin {
+  ADMIN
+  SUPPORT
+
+  @@map("papel_admin")
+}
+
+/// Usuários com acesso ao painel admin: o dono (ADMIN) e o desenvolvedor para suporte (SUPPORT).
+model UsuarioAdmin {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome      String
+  /// Sempre minúsculo (garantido por CHECK no banco).
+  email     String     @unique
+  senhaHash String     @map("senha_hash")
+  papel     PapelAdmin @default(ADMIN)
+  ativo     Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_usuarios_admin_updated_at.
+  updatedAt DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("usuarios_admin")
+}
