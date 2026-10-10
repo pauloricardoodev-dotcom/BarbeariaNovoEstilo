@@ -3,15 +3,15 @@
 Site de agendamento + painel admin de uma barbearia (Curitiba/PR). **Somente frontend**, sem backend: todos os dados são mock/estado local (perdem-se ao recarregar).
 
 ## Stack
-React 19 + Vite 8 (JS/JSX, sem TypeScript), Bootstrap 5 (só grid/utilities), CSS próprio, oxlint. Sem roteador, sem testes.
+React 19 + Vite 8 (JS/JSX, sem TypeScript), Bootstrap 5 (só grid/utilities), CSS próprio, oxlint, React Router 7 (`/` site, `/admin/*` painel). Sem testes no frontend.
 
 ## Comandos (rodar em `frontend/`)
-- `npm run dev` — dev server (site em `/`, admin em `/admin.html`)
+- `npm run dev` — dev server (site em `/`, admin em `/admin`)
 - `npm run build` / `npm run preview` / `npm run lint`
 
 ## Mapa rápido
-- `frontend/index.html` → `src/main.jsx` → `App.jsx` (site público)
-- `frontend/admin.html` → `src/admin-main.jsx` → `admin/AdminDashboard` → `AdminPanel` (admin)
+- `frontend/index.html` → `src/main.jsx` (`BrowserRouter`) → `src/AppRoutes.jsx` (entrada única)
+- Rotas (React Router, `src/AppRoutes.jsx`): `/` → `App.jsx`; `/admin/*` → `admin/AdminDashboard` → `AdminPanel` (abas em `/admin/agenda`, `/admin/servicos`…)
 - `barbearia-novo-estilo.html` (raiz) — protótipo HTML único antigo, referência histórica
 - `RefatorancaoVisual.md` (raiz) — briefing de refatoração visual (Hero, Header, seção Profissionais); referencia `/referencia/hero.png`, que não existe no repo
 

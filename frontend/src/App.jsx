@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import 'bootstrap/dist/css/bootstrap-grid.min.css';
+import 'bootstrap/dist/css/bootstrap-utilities.min.css';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import Services from './components/Services';

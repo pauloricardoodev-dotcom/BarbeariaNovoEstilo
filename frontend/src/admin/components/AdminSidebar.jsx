@@ -1,12 +1,14 @@
+import { NavLink } from 'react-router';
+
 const NAV_ITEMS = [
-  { id: 'agenda', icon: '📅', label: 'Agenda' },
-  { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-  { id: 'services', icon: '💇', label: 'Serviços' },
-  { id: 'professionals', icon: '👥', label: 'Profissionais' },
-  { id: 'settings', icon: '⚙️', label: 'Configurações' },
+  { path: '/admin/agenda', icon: '📅', label: 'Agenda' },
+  { path: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
+  { path: '/admin/servicos', icon: '💇', label: 'Serviços' },
+  { path: '/admin/profissionais', icon: '👥', label: 'Profissionais' },
+  { path: '/admin/configuracoes', icon: '⚙️', label: 'Configurações' },
 ];
 
-const AdminSidebar = ({ activeTab, setActiveTab, collapsed, onToggle, user, onLogout }) => {
+const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
   const handleLogout = () => {
     onLogout();
   };
@@ -36,16 +38,17 @@ const AdminSidebar = ({ activeTab, setActiveTab, collapsed, onToggle, user, onLo
       <nav className="flex-grow-1 py-3 overflow-y-auto">
         <ul className="nav flex-column">
           {NAV_ITEMS.map((item) => (
-            <li key={item.id} className="nav-item">
-              <button
-                type="button"
-                className={`sidebar-link w-100 d-flex align-items-center gap-3 ${activeTab === item.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(item.id)}
+            <li key={item.path} className="nav-item">
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  `sidebar-link w-100 d-flex align-items-center gap-3 ${isActive ? 'active' : ''}`
+                }
                 title={item.label}
               >
                 <span className="fs-5">{item.icon}</span>
                 {!collapsed && <span className="text-truncate">{item.label}</span>}
-              </button>
+              </NavLink>
             </li>
           ))}
         </ul>

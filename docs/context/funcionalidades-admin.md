@@ -1,6 +1,6 @@
 # Funcionalidades — Painel admin (`frontend/src/admin`)
 
-Acesso: `/admin.html`. **Exige login** (`AdminDashboard` consulta `GET /api/auth/me`; sem sessão mostra `components/LoginPage.jsx`; servidor fora do ar mostra "Tentar novamente"). Chamadas em `admin/api/auth.js`. UI feita com classes do Bootstrap 5 (grid `row/col`, `card`, `table`, `form-*`, `btn`, `badge`, `alert`, `list-group`); modais via `AdminModal` (markup `.modal` do Bootstrap, sem o JS do Bootstrap). Layout: `AdminSidebar` (colapsável, ←/→) + `<main>` com a aba ativa (`activeTab` em `AdminPanel`). "Sair" chama `POST /api/auth/logout` e volta à tela de login; o nome do admin aparece no rodapé da sidebar.
+Acesso: `/admin` (abas em `/admin/agenda`, `/admin/dashboard`, `/admin/servicos`, `/admin/profissionais`, `/admin/configuracoes`). **Exige login** (`AdminDashboard` consulta `GET /api/auth/me`; sem sessão mostra `components/LoginPage.jsx`; servidor fora do ar mostra "Tentar novamente"). Chamadas em `admin/api/auth.js`. UI feita com classes do Bootstrap 5 (grid `row/col`, `card`, `table`, `form-*`, `btn`, `badge`, `alert`, `list-group`); modais via `AdminModal` (markup `.modal` do Bootstrap, sem o JS do Bootstrap). Layout: `AdminSidebar` (colapsável, ←/→) + `<main>` com a aba da rota atual (`<Routes>` em `AdminPanel`). "Sair" chama `POST /api/auth/logout` e volta à tela de login; o nome do admin aparece no rodapé da sidebar.
 
 ## Aba Agenda (`AgendaTab.jsx`) — aba inicial
 Estado: `appointmentsList` (cópia do mock), `view` (`calendar`|`day`), `selectedDate`, modais.

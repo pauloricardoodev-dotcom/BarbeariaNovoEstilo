@@ -14,8 +14,6 @@
 - Horário: Footer "Terça a sábado 09h–19h"; Configurações "Seg–Sáb 09:00–18:00"; site bloqueia só domingos (segunda aberta).
 - Ids de serviço: string no site, numérico no admin.
 - `PROS` (constants.js) não usado; `Sidebar/Navbar/Filters/Pagination/AppointmentsTable/StatsCards/DetailsModal/EditModal` órfãos.
-- `index.html` referencia `/favicon.svg`; `admin.html` referencia `/vite.svg` (inexistente em `public/`).
-- `vite.config.js` sem entrada multi-page → verificar se `npm run build` inclui `admin.html`.
 - `RefatorancaoVisual.md` cita `/referencia/hero.png` que não existe no repo.
 
 ## Refatoração visual em andamento (`RefatorancaoVisual.md`)

@@ -1,21 +1,28 @@
 # Arquitetura
 
-## Duas apps Vite no mesmo projeto (multi-page)
-| Página | HTML | Entry | Raiz React |
-|---|---|---|---|
-| Site público | `frontend/index.html` | `src/main.jsx` (importa `bootstrap-grid` e `bootstrap-utilities`) | `src/App.jsx` |
-| Admin | `frontend/admin.html` | `src/admin-main.jsx` (importa o Bootstrap **completo** + `admin/styles/admin.css`) | `src/admin/AdminDashboard.jsx` → `AdminPanel.jsx` |
+## Um app Vite com React Router
+Entrada única: `frontend/index.html` → `src/main.jsx` (`BrowserRouter`) → `src/AppRoutes.jsx`.
+| Rota | Componente (lazy) | CSS que carrega |
+|---|---|---|
+| `/` | `src/App.jsx` (site público) | `bootstrap-grid` + `bootstrap-utilities` + `styles/globals.css` |
+| `/admin/*` | `src/admin/AdminDashboard.jsx` → `AdminPanel.jsx` | Bootstrap **completo** + `admin/styles/admin.css` |
+| `/admin.html` | redireciona para `/admin` (endereço antigo) | — |
+| qualquer outra | redireciona para `/` | — |
 
-`vite.config.js` tem o plugin React e o proxy `/api` → `http://localhost:3000` (backend). **Não há `rollupOptions.input` multi-page**: confirmado que `npm run build` só gera `index.html` (o admin não entra no build). O admin exige login (ver Backend abaixo).
+Cada área é carregada sob demanda (`React.lazy`) e traz o próprio CSS; os dois CSS **conflitam** (ambos definem `:root`, ex. `--cream`, e builds diferentes do Bootstrap). Por isso, entre site e admin navegue com `<a href>` (recarrega a página), **nunca** com `<Link>`. Dentro do admin as abas são rotas (`/admin/agenda`, `/admin/dashboard`, `/admin/servicos`, `/admin/profissionais`, `/admin/configuracoes`; `/admin` → `agenda`), com `NavLink` na `AdminSidebar`.
+
+`vite.config.js` tem o plugin React e o proxy `/api` → `http://localhost:3000` (backend). Em produção, o servidor precisa devolver `index.html` para qualquer rota não encontrada (fallback de SPA), senão abrir `/admin` direto dá 404.
 
 ## Pastas (`frontend/src`)
 ```
+AppRoutes.jsx           rotas (/, /admin/*) com lazy loading
 App.jsx                 monta Header, Hero, Services, Booking, About, Footer; guarda preSelectedService
 components/             site público (Header, Hero, Services, Booking, About, Footer)
 data/constants.js       SERVICES, PROS, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS, HERO_STATS
 styles/globals.css      CSS do site público
 admin/
-  AdminPanel.jsx        layout + troca de aba por estado (agenda|dashboard|services|professionals|settings)
+  AdminDashboard.jsx    portão de login (sessão via /api/auth/me)
+  AdminPanel.jsx        layout + rotas das abas (agenda|dashboard|servicos|profissionais|configuracoes)
   components/           abas e modais; compartilhados: AdminModal (modal Bootstrap controlado por React), PageHeader, StatusBadge
   data/mockData.js      appointments (~700 linhas), stats, statusLabels, services, professionals
   styles/admin.css      só tema (variáveis Bootstrap, sidebar, calendário, gráfico); o resto é Bootstrap

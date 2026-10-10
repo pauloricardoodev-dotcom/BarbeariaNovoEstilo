@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './styles/admin.css';
 import AdminPanel from './AdminPanel';
 import LoginPage from './components/LoginPage';
 import { getCurrentUser, logout } from './api/auth';
@@ -40,18 +42,17 @@ const AdminDashboard = () => {
     }
   };
 
+  let content;
   if (status === 'loading') {
-    return (
+    content = (
       <div className="login-page d-flex align-items-center justify-content-center">
         <div className="spinner-border text-secondary" role="status">
           <span className="visually-hidden">Carregando…</span>
         </div>
       </div>
     );
-  }
-
-  if (status === 'error') {
-    return (
+  } else if (status === 'error') {
+    content = (
       <div className="login-page d-flex flex-column align-items-center justify-content-center gap-3 p-3 text-center">
         <p className="mb-0">Não foi possível conectar ao servidor.</p>
         <button type="button" className="btn btn-outline-secondary" onClick={handleRetry}>
@@ -59,11 +60,18 @@ const AdminDashboard = () => {
         </button>
       </div>
     );
+  } else if (status === 'anonymous') {
+    content = <LoginPage onLogin={handleLogin} />;
+  } else {
+    content = <AdminPanel user={user} onLogout={handleLogout} />;
   }
 
-  if (status === 'anonymous') return <LoginPage onLogin={handleLogin} />;
-
-  return <AdminPanel user={user} onLogout={handleLogout} />;
+  return (
+    <>
+      <title>Admin - Barbearia Novo Estilo</title>
+      {content}
+    </>
+  );
 };
 
 export default AdminDashboard;
