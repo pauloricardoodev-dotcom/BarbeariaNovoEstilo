@@ -27,6 +27,10 @@
   --bs-border-radius: 0.25rem;
 }
 
+.btn {
+  --bs-btn-border-radius: 8px;
+}
+
 .btn-primary {
   --bs-btn-bg: var(--wine);
   --bs-btn-border-color: var(--wine);
