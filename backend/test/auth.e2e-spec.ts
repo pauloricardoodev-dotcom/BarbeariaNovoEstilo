@@ -1,5 +1,6 @@
 // Fluxo HTTP completo de login/sessão do admin, com o banco substituído por um fake em memória.
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import request from 'supertest';
@@ -206,5 +207,57 @@ describe('Auth do admin (e2e)', () => {
     );
     const status = (await Promise.all(tentativas)).map((r) => r.status);
     expect(status).toContain(429);
+  });
+
+  describe('separação entre sessão de admin e de cliente', () => {
+    const jwt = new JwtService({
+      secret: 'segredo-de-teste-com-pelo-menos-32-caracteres',
+    });
+    const adminId = '7d0f9a3e-0000-4000-8000-000000000001';
+
+    it('rota de admin recusa token com audiência de cliente', async () => {
+      const token = jwt.sign(
+        { sub: adminId, papel: 'ADMIN' },
+        { audience: 'cliente' },
+      );
+      await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Cookie', `ne_admin_sessao=${token}`)
+        .expect(401);
+    });
+
+    it('rota de admin recusa token sem audiência (formato antigo)', async () => {
+      const token = jwt.sign({ sub: adminId, papel: 'ADMIN' });
+      await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Cookie', `ne_admin_sessao=${token}`)
+        .expect(401);
+    });
+
+    it('rota de cliente recusa a sessão de admin, mesmo no cookie de cliente', async () => {
+      const cookieAdmin = await logar();
+      await request(app.getHttpServer())
+        .get('/api/clientes/me')
+        .set('Cookie', cookieAdmin)
+        .expect(401);
+
+      const tokenAdmin = cookieAdmin.split('=')[1];
+      await request(app.getHttpServer())
+        .get('/api/clientes/me')
+        .set('Cookie', `ne_cliente_sessao=${tokenAdmin}`)
+        .expect(401);
+    });
+
+    it('rotas de clientes do admin exigem sessão de admin', async () => {
+      await request(app.getHttpServer()).get('/api/admin/clientes').expect(401);
+      const tokenCliente = jwt.sign(
+        { sub: adminId, ver: 0 },
+        { audience: 'cliente' },
+      );
+      await request(app.getHttpServer())
+        .get('/api/admin/clientes')
+        .set('Cookie', `ne_admin_sessao=${tokenCliente}`)
+        .expect(401);
+    });
   });
 });

@@ -1,0 +1,372 @@
+/* ===== Telas de conta do cliente (entrar, cadastro, verificação, minha conta…) =====
+   Reaproveita .field, .btn e as variáveis de globals.css; mesmo visual do cartão de agendamento. */
+
+/* Link "Entrar" / "Olá, Fulano" no header escuro */
+.header-conta {
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cream);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  padding: 8px 4px;
+}
+
+.header-conta:hover {
+  color: var(--gold);
+}
+
+.conta-page {
+  background: var(--navy);
+  padding: 72px 0 96px;
+  min-height: calc(100vh - 84px);
+}
+
+.conta-card {
+  max-width: 480px;
+  margin: 0 auto;
+  background: var(--cream);
+  border-radius: 16px;
+  border: 1px solid rgba(242, 242, 240, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  padding: 44px 44px 36px;
+}
+
+.conta-card-largo {
+  max-width: 720px;
+}
+
+.conta-card h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.conta-sub {
+  font-size: 15px;
+  margin-bottom: 28px;
+}
+
+.conta-carregando {
+  text-align: center;
+  color: var(--cream);
+}
+
+.conta-link {
+  color: var(--wine);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.conta-link:hover {
+  color: var(--wine-2);
+}
+
+.conta-linha-direita {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 22px;
+  font-size: 14px;
+}
+
+.conta-rodape {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14.5px;
+}
+
+/* Mensagens */
+.conta-alerta {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  border: 1px solid;
+}
+
+.conta-alerta-erro {
+  background: rgba(155, 38, 53, 0.08);
+  border-color: rgba(155, 38, 53, 0.35);
+  color: var(--wine-2);
+}
+
+.conta-alerta-sucesso {
+  background: rgba(46, 125, 50, 0.08);
+  border-color: rgba(46, 125, 50, 0.35);
+  color: #1e5b22;
+}
+
+.conta-alerta-aviso {
+  background: rgba(199, 150, 30, 0.1);
+  border-color: rgba(199, 150, 30, 0.45);
+  color: #6b4f0c;
+}
+
+/* Campos: complementos ao .field de globals.css */
+.field-hint {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+
+.field-senha {
+  position: relative;
+}
+
+.field-senha input {
+  padding-right: 92px;
+}
+
+.field-senha-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-radius: 6px;
+}
+
+.field-senha-toggle:hover {
+  color: var(--wine);
+}
+
+.field-senha-toggle:focus-visible,
+.conta-check input:focus-visible {
+  outline: 2px solid var(--wine);
+  outline-offset: 2px;
+}
+
+.conta-check {
+  margin: 4px 0 24px;
+  font-size: 14px;
+}
+
+.conta-check label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.conta-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--wine);
+  flex-shrink: 0;
+}
+
+.conta-check .err {
+  display: block;
+  font-size: 12.5px;
+  color: var(--wine);
+  margin-top: 6px;
+}
+
+/* Verificação de e-mail / WhatsApp */
+.verif-bloco {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  padding: 22px;
+  margin-bottom: 18px;
+}
+
+.verif-bloco h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.verif-destino {
+  font-size: 14px;
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+
+.verif-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.verif-form .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.verif-form .btn {
+  padding: 13px 22px;
+}
+
+.verif-codigo {
+  letter-spacing: 6px;
+  font-size: 18px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.verif-reenviar {
+  margin-top: 6px;
+  font-size: 12.5px;
+  padding-left: 0;
+}
+
+.verif-ok {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.verif-ok b {
+  display: block;
+  color: var(--navy);
+}
+
+.verif-ok small {
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.verif-check {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #2e7d32;
+  color: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Minha conta */
+.conta-secao {
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+  margin-top: 28px;
+}
+
+.conta-secao:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.conta-secao h2 {
+  font-size: 22px;
+  margin-bottom: 18px;
+}
+
+.conta-secao-sair {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Termos / privacidade */
+.texto-legal h2 {
+  font-size: 19px;
+  margin: 26px 0 8px;
+}
+
+.texto-legal p {
+  font-size: 15px;
+}
+
+.texto-legal-aviso {
+  border-left: 3px solid var(--wine);
+  padding-left: 12px;
+  font-style: italic;
+}
+
+/* Links do rodapé (termos/privacidade) */
+.footer-bottom small a {
+  color: inherit;
+}
+
+@media (max-width: 760px) {
+  .conta-page {
+    padding: 32px 0 64px;
+  }
+
+  .conta-card {
+    padding: 30px 20px 26px;
+  }
+
+  .conta-card h1 {
+    font-size: 26px;
+  }
+
+  .verif-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .conta-secao .btn,
+  .conta-secao-sair .btn {
+    width: 100%;
+  }
+}
+
+/* Aviso de verificação dentro do agendamento */
+.booking-aviso {
+  margin: 24px 0 0;
+}
+
+/* Diálogo de confirmação (<dialog> nativo) */
+.confirm-dialog {
+  border: none;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 440px;
+  width: calc(100% - 32px);
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(18, 18, 20, 0.6);
+}
+
+.confirm-dialog h3 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.confirm-dialog-texto p {
+  font-size: 15px;
+}
+
+.confirm-dialog-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.confirm-dialog-acoes .btn {
+  padding: 13px 22px;
+}
+
+@media (max-width: 575.98px) {
+  .confirm-dialog {
+    padding: 26px 20px;
+  }
+
+  .confirm-dialog-acoes {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-dialog-acoes .btn {
+    width: 100%;
+  }
+}

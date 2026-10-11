@@ -1,7 +1,8 @@
 # Pendências e inconsistências conhecidas
 
 ## Funcionalidades simuladas / incompletas
-- Backend só tem login do admin: agendamentos do site **não chegam** ao admin; o resto não persiste.
+- Backend tem login do admin e contas de cliente (Fases 1 e 3: cadastro, login, verificação, minha conta), mas o agendamento ainda não exige login e **não chega** ao admin; o resto não persiste.
+- `RefatorancaoVisual.md` citado nos docs não existe no repositório.
 - Disponibilidade de horários no site é um hash falso (`slotUnavailable`), não consulta a agenda.
 - Pagamento (Pix QR, cartão) é demonstração; cartão sem validação.
 - Configurações não salva; botão de notificações/Navbar não usados.

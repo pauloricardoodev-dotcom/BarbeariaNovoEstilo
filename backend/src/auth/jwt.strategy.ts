@@ -4,7 +4,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
 import { Strategy } from 'passport-jwt';
 import type { Env } from '../config/env.validation.js';
-import { COOKIE_SESSAO } from './auth.constants.js';
+import { AUDIENCIA_ADMIN, COOKIE_SESSAO } from './auth.constants.js';
 import { AuthService } from './auth.service.js';
 import type { PayloadJwt, UsuarioAutenticado } from './auth.types.js';
 
@@ -24,6 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: extrairTokenDoCookie,
       secretOrKey: config.get('JWT_SECRET', { infer: true }),
       algorithms: ['HS256'],
+      audience: AUDIENCIA_ADMIN,
       ignoreExpiration: false,
     });
   }

@@ -1,3 +1,6 @@
+import { Link } from 'react-router';
+import useIrParaSecao from '../utils/useIrParaSecao';
+
 const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
   { id: 'servicos', label: 'Serviços' },
@@ -11,20 +14,14 @@ const Icon = ({ children }) => (
 );
 
 const Footer = () => {
-  const scrollToSection = (e, sectionId) => {
-    e.preventDefault();
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
+  const scrollToSection = useIrParaSecao();
 
   return (
     <footer>
       <div className="container">
         <div className="row g-5 footer-main">
           <div className="col-12 col-lg-4 footer-brand">
-            <a href="#inicio" className="brand" onClick={(e) => scrollToSection(e, 'inicio')}>
+            <a href="/#inicio" className="brand" onClick={(e) => scrollToSection(e, 'inicio')}>
               <div className="mini-emblem">
                 <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="1.3"/>
@@ -50,7 +47,7 @@ const Footer = () => {
             <ul>
               {NAV_LINKS.map((link) => (
                 <li key={link.id}>
-                  <a href={`#${link.id}`} onClick={(e) => scrollToSection(e, link.id)}>{link.label}</a>
+                  <a href={`/#${link.id}`} onClick={(e) => scrollToSection(e, link.id)}>{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -87,7 +84,10 @@ const Footer = () => {
 
         <div className="footer-bottom">
           <span>Elegância em cada detalhe.</span>
-          <small>© 2026 Barbearia Novo Estilo. Todos os direitos reservados.</small>
+          <small>
+            © 2026 Barbearia Novo Estilo. Todos os direitos reservados. ·{' '}
+            <Link to="/termos">Termos de uso</Link> · <Link to="/privacidade">Privacidade</Link>
+          </small>
         </div>
       </div>
     </footer>

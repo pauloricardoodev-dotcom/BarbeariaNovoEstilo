@@ -1,7 +1,29 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { SERVICES, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
+import ConfirmDialog from './ConfirmDialog';
+import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
+import { exibirTelefone } from '../utils/telefone';
+import {
+  formatarCvv,
+  formatarNomeCartao,
+  formatarNumeroCartao,
+  formatarValidade,
+  validarCartao,
+} from '../utils/cartao';
 
+const CARTAO_VAZIO = { numero: '', nome: '', validade: '', cvv: '' };
+const MASCARAS_CARTAO = {
+  numero: formatarNumeroCartao,
+  nome: formatarNomeCartao,
+  validade: formatarValidade,
+  cvv: formatarCvv,
+};
+
+// Passos: 1 Serviço · 2 Data e horário · 3 Pagamento · 4 Confirmação.
+// Os dados do cliente vêm do perfil (login obrigatório), sem etapa de identificação.
 const Booking = ({ preSelectedService }) => {
+  const { cliente } = useSessaoCliente();
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
   const [viewMonth, setViewMonth] = useState(() => {
@@ -10,13 +32,14 @@ const Booking = ({ preSelectedService }) => {
   });
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [payMethod, setPayMethod] = useState('pix');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({ name: false, phone: false, email: false });
+  const [avisoVerificacao, setAvisoVerificacao] = useState(false);
+  const [cartao, setCartao] = useState(CARTAO_VAZIO);
+  const [erroCartao, setErroCartao] = useState('');
+  // Pergunta sobre salvar o cartão: null | 'salvar' | 'confirmarSemSalvar'
+  const [dialogoCartao, setDialogoCartao] = useState(null);
 
   // Handle pre-selected service from other components
   useEffect(() => {
@@ -106,27 +129,6 @@ const Booking = ({ preSelectedService }) => {
     URL.revokeObjectURL(url);
   };
 
-  const validateStep4 = () => {
-    let valid = true;
-    const errors = { name: false, phone: false, email: false };
-
-    if (name.length < 3) {
-      errors.name = true;
-      valid = false;
-    }
-    if (phone.replace(/\D/g, '').length < 10) {
-      errors.phone = true;
-      valid = false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = true;
-      valid = false;
-    }
-
-    setFieldErrors(errors);
-    return valid;
-  };
-
   const resetFlow = () => {
     setStep(1);
     setService(null);
@@ -134,17 +136,41 @@ const Booking = ({ preSelectedService }) => {
     setSelectedDate(null);
     setSelectedTime(null);
     setPayMethod('pix');
-    setName('');
-    setPhone('');
-    setEmail('');
-    setFieldErrors({ name: false, phone: false, email: false });
+    setAvisoVerificacao(false);
     document.getElementById('inicio').scrollIntoView({ behavior: 'smooth' });
   };
 
+  const alterarCartao = (campo) => (e) => {
+    setCartao({ ...cartao, [campo]: MASCARAS_CARTAO[campo](e.target.value) });
+    setErroCartao('');
+  };
+
+  // "Pagar": com os dados válidos, pergunta se o cliente quer cadastrar o cartão.
   const handleCardPayment = () => {
-    // In a real app, you would validate and process the card payment here
-    // For demo purposes, we'll just show confirmation
-    setStep(5);
+    const erro = validarCartao(cartao);
+    if (erro) {
+      setErroCartao(erro);
+      return;
+    }
+    setDialogoCartao('salvar');
+  };
+
+  // Pagamento com cartão ainda é demonstração (sem gateway). Os dados do cartão
+  // NUNCA vão para o nosso backend: quando o gateway entrar (ex.: Mercado Pago),
+  // ele tokeniza o cartão; para "cadastrar o cartão" guardamos só token + bandeira + 4 últimos dígitos.
+  const concluirPagamentoCartao = () => {
+    setDialogoCartao(null);
+    setCartao(CARTAO_VAZIO); // não mantém número/CVV na memória da página
+    setStep(4);
+  };
+
+  // Agendar exige e-mail e WhatsApp confirmados.
+  const handleIrParaPagamento = () => {
+    if (!contaVerificada(cliente)) {
+      setAvisoVerificacao(true);
+      return;
+    }
+    setStep(3);
   };
 
   // Render functions for each step
@@ -306,12 +332,20 @@ const Booking = ({ preSelectedService }) => {
             </div>
           </div>
         </div>
+        {avisoVerificacao && (
+          <div className="conta-alerta conta-alerta-aviso booking-aviso" role="alert">
+            Para agendar, confirme seu e-mail e seu WhatsApp.{' '}
+            <Link to="/verificar?voltar=%2F%23agendamento" className="conta-link">
+              Confirmar agora
+            </Link>
+          </div>
+        )}
         <div className="step-nav">
           <button className="btn btn-ghost" onClick={() => setStep(1)}>← Voltar</button>
           <button
             className="btn btn-primary"
             disabled={!selectedDate || !selectedTime}
-            onClick={() => setStep(3)}
+            onClick={handleIrParaPagamento}
           >
             Continuar →
           </button>
@@ -320,71 +354,157 @@ const Booking = ({ preSelectedService }) => {
     );
   };
 
-  const renderStep4 = () => {
-    const renderSummary = () => (
-      <aside className="summary-card">
-        <h4>Seu agendamento</h4>
-        {!service ? (
-          <p className="summary-empty">Escolha um serviço para começar.</p>
-        ) : (
-          <>
+  const renderSummary = () => (
+    <aside className="summary-card">
+      <h4>Seu agendamento</h4>
+      {!service ? (
+        <p className="summary-empty">Escolha um serviço para começar.</p>
+      ) : (
+        <>
+          <div className="summary-item">
+            <div className="si-main">{service.name}</div>
+            <div className="si-sub">{service.duration} min</div>
+          </div>
+          {selectedDate && selectedTime && (
             <div className="summary-item">
-              <div className="si-main">{service.name}</div>
-              <div className="si-sub">{service.duration} min</div>
+              <div className="si-main">{formatSelectedDateShort()} · {selectedTime}</div>
+              <div className="si-sub">Data e horário</div>
             </div>
-            {selectedDate && selectedTime && (
-              <div className="summary-item">
-                <div className="si-main">{formatSelectedDateShort()} · {selectedTime}</div>
-                <div className="si-sub">Data e horário</div>
+          )}
+          {cliente && (
+            <div className="summary-item">
+              <div className="si-main">{cliente.nome}</div>
+              <div className="si-sub">
+                {exibirTelefone(cliente.telefone)} · {cliente.email}
               </div>
-            )}
-            <div className="summary-total">
-              <span className="v">{formatPrice(service.price)}</span>
-              <span className="k">Total</span>
             </div>
-          </>
-        )}
-      </aside>
-    );
+          )}
+          <div className="summary-total">
+            <span className="v">{formatPrice(service.price)}</span>
+            <span className="k">Total</span>
+          </div>
+        </>
+      )}
+    </aside>
+  );
+
+  const renderPayment = () => {
+    const amount = service ? formatPrice(service.price) : formatPrice(0);
 
     return (
       <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
-        <h3>Quase pronto!</h3>
-        <p className="step-sub">Informe seus dados para confirmarmos o agendamento.</p>
+        <h3>Como deseja pagar?</h3>
+        <p className="step-sub">
+          Agendando como <b>{cliente?.nome}</b>.{' '}
+          <Link to="/minha-conta" className="conta-link">
+            Alterar meus dados
+          </Link>
+        </p>
         <div className="row g-4">
           <div className="col-12 col-lg-7">
-            <div className={`field ${fieldErrors.name ? 'invalid' : ''}`}>
-              <label htmlFor="inpName">Nome completo</label>
-              <input
-                type="text"
-                id="inpName"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Digite seu nome completo"
-              />
-              <span className="err">Informe seu nome completo.</span>
+            <div className="pay-tabs">
+              <button
+                className={`pay-tab ${payMethod === 'pix' ? 'active' : ''}`}
+                onClick={() => setPayMethod('pix')}
+              >
+                Pix
+              </button>
+              <button
+                className={`pay-tab ${payMethod === 'cartao' ? 'active' : ''}`}
+                onClick={() => setPayMethod('cartao')}
+              >
+                Cartão
+              </button>
+              <button
+                className={`pay-tab ${payMethod === 'presencial' ? 'active' : ''}`}
+                onClick={() => setPayMethod('presencial')}
+              >
+                Pagar no salão
+              </button>
             </div>
-            <div className={`field ${fieldErrors.phone ? 'invalid' : ''}`}>
-              <label htmlFor="inpPhone">Telefone</label>
-              <input
-                type="tel"
-                id="inpPhone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(41) 90000-0000"
-              />
-              <span className="err">Informe um telefone válido.</span>
+
+            <div className={`pay-panel ${payMethod === 'pix' ? 'active' : ''}`} style={{ display: payMethod === 'pix' ? 'block' : 'none' }}>
+              <div className="pix-box">
+                <svg className="qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" dangerouslySetInnerHTML={{ __html: generateQRCode() }} />
+                <div className="pix-info">
+                  <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
+                  <div className="pix-amount">{amount}</div>
+                  <button className="btn btn-primary" onClick={() => setStep(4)}>
+                    Já realizei o pagamento
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className={`field ${fieldErrors.email ? 'invalid' : ''}`}>
-              <label htmlFor="inpEmail">E-mail</label>
-              <input
-                type="email"
-                id="inpEmail"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@email.com"
-              />
-              <span className="err">Informe um e-mail válido.</span>
+
+            <div className={`pay-panel ${payMethod === 'cartao' ? 'active' : ''}`} style={{ display: payMethod === 'cartao' ? 'block' : 'none' }}>
+              <div className="card-form">
+                <div className="field full">
+                  <label htmlFor="ccNumber">Número do cartão</label>
+                  <input type="text" id="ccNumber" placeholder="0000 0000 0000 0000" maxLength={23} inputMode="numeric" autoComplete="cc-number" value={cartao.numero} onChange={alterarCartao('numero')} />
+                </div>
+                <div className="field full">
+                  <label htmlFor="ccName">Nome no cartão</label>
+                  <input type="text" id="ccName" placeholder="Como está impresso no cartão" maxLength={26} autoComplete="cc-name" value={cartao.nome} onChange={alterarCartao('nome')} />
+                </div>
+                <div className="field">
+                  <label htmlFor="ccExp">Validade</label>
+                  <input type="text" id="ccExp" placeholder="MM/AA" maxLength={5} inputMode="numeric" autoComplete="cc-exp" value={cartao.validade} onChange={alterarCartao('validade')} />
+                </div>
+                <div className="field">
+                  <label htmlFor="ccCvv">CVV</label>
+                  <input type="text" id="ccCvv" placeholder="000" maxLength={4} inputMode="numeric" autoComplete="cc-csc" value={cartao.cvv} onChange={alterarCartao('cvv')} />
+                </div>
+              </div>
+              {erroCartao && (
+                <div className="conta-alerta conta-alerta-erro" role="alert">
+                  {erroCartao}
+                </div>
+              )}
+              <div className="pay-amount-line">
+                <span>Total a pagar</span>
+                <b>{amount}</b>
+              </div>
+              <button className="btn btn-primary btn-block" style={{ marginTop: '22px' }} onClick={handleCardPayment}>
+                Pagar
+              </button>
+
+              <ConfirmDialog
+                aberto={dialogoCartao === 'salvar'}
+                titulo="Deseja cadastrar o cartão?"
+                textoPrimario="Sim, cadastrar"
+                // TODO(gateway): tokenizar e salvar o cartão no perfil antes de concluir.
+                onPrimario={concluirPagamentoCartao}
+                textoSecundario="Não"
+                onSecundario={() => setDialogoCartao('confirmarSemSalvar')}
+                onFechar={() => setDialogoCartao(null)}
+              >
+                <p>Com o cartão cadastrado no seu perfil, você não precisa informar os dados nos próximos agendamentos.</p>
+              </ConfirmDialog>
+              <ConfirmDialog
+                aberto={dialogoCartao === 'confirmarSemSalvar'}
+                titulo="Continuar sem cadastrar o cartão?"
+                textoPrimario="Confirmar pagamento"
+                onPrimario={concluirPagamentoCartao}
+                textoSecundario="Voltar"
+                onSecundario={() => setDialogoCartao('salvar')}
+                onFechar={() => setDialogoCartao(null)}
+              >
+                <p>
+                  O pagamento será realizado normalmente, mas no próximo agendamento será necessário informar os dados
+                  do cartão novamente.
+                </p>
+              </ConfirmDialog>
+            </div>
+
+            <div className={`pay-panel ${payMethod === 'presencial' ? 'active' : ''}`} style={{ display: payMethod === 'presencial' ? 'block' : 'none' }}>
+              <div className="presencial-card">
+                <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
+                <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
+                <div className="amt">{amount}</div>
+                <button className="btn btn-primary" onClick={() => setStep(4)}>
+                  Confirmar agendamento
+                </button>
+              </div>
             </div>
           </div>
           <div className="col-12 col-lg-5">
@@ -393,101 +513,6 @@ const Booking = ({ preSelectedService }) => {
         </div>
         <div className="step-nav">
           <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              if (validateStep4()) setStep(4);
-            }}
-          >
-            Continuar →
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderStep5 = () => {
-    const amount = service ? formatPrice(service.price) : formatPrice(0);
-
-    return (
-      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
-        <h3>Como deseja pagar?</h3>
-        <p className="step-sub">Escolha a forma de pagamento para concluir.</p>
-        <div className="pay-tabs">
-          <button
-            className={`pay-tab ${payMethod === 'pix' ? 'active' : ''}`}
-            onClick={() => setPayMethod('pix')}
-          >
-            Pix
-          </button>
-          <button
-            className={`pay-tab ${payMethod === 'cartao' ? 'active' : ''}`}
-            onClick={() => setPayMethod('cartao')}
-          >
-            Cartão
-          </button>
-          <button
-            className={`pay-tab ${payMethod === 'presencial' ? 'active' : ''}`}
-            onClick={() => setPayMethod('presencial')}
-          >
-            Pagar no salão
-          </button>
-        </div>
-
-        <div className={`pay-panel ${payMethod === 'pix' ? 'active' : ''}`} style={{ display: payMethod === 'pix' ? 'block' : 'none' }}>
-          <div className="pix-box">
-            <svg className="qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" dangerouslySetInnerHTML={{ __html: generateQRCode() }} />
-            <div className="pix-info">
-              <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
-              <div className="pix-amount">{amount}</div>
-              <button className="btn btn-primary" onClick={() => setStep(5)}>
-                Já realizei o pagamento
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className={`pay-panel ${payMethod === 'cartao' ? 'active' : ''}`} style={{ display: payMethod === 'cartao' ? 'block' : 'none' }}>
-          <div className="card-form">
-            <div className="field full">
-              <label htmlFor="ccNumber">Número do cartão</label>
-              <input type="text" id="ccNumber" placeholder="0000 0000 0000 0000" maxLength={19} />
-            </div>
-            <div className="field full">
-              <label htmlFor="ccName">Nome no cartão</label>
-              <input type="text" id="ccName" placeholder="Como está impresso no cartão" />
-            </div>
-            <div className="field">
-              <label htmlFor="ccExp">Validade</label>
-              <input type="text" id="ccExp" placeholder="MM/AA" maxLength={5} />
-            </div>
-            <div className="field">
-              <label htmlFor="ccCvv">CVV</label>
-              <input type="text" id="ccCvv" placeholder="000" maxLength={4} />
-            </div>
-          </div>
-          <div className="pay-amount-line">
-            <span>Total a pagar</span>
-            <b>{amount}</b>
-          </div>
-          <button className="btn btn-primary btn-block" style={{ marginTop: '22px' }} onClick={handleCardPayment}>
-            Pagar
-          </button>
-        </div>
-
-        <div className={`pay-panel ${payMethod === 'presencial' ? 'active' : ''}`} style={{ display: payMethod === 'presencial' ? 'block' : 'none' }}>
-          <div className="presencial-card">
-            <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
-            <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
-            <div className="amt">{amount}</div>
-            <button className="btn btn-primary" onClick={() => setStep(5)}>
-              Confirmar agendamento
-            </button>
-          </div>
-        </div>
-
-        <div className="step-nav">
-          <button className="btn btn-ghost" onClick={() => setStep(3)}>← Voltar</button>
           <span></span>
         </div>
       </div>
@@ -496,7 +521,7 @@ const Booking = ({ preSelectedService }) => {
 
   const renderConfirmation = () => {
     return (
-      <div className="step-panel" style={{ display: step === 5 ? 'block' : 'none' }}>
+      <div className="step-panel" style={{ display: step === 4 ? 'block' : 'none' }}>
         <div className="confirm-panel">
           <div className="check-circle">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -530,15 +555,14 @@ const Booking = ({ preSelectedService }) => {
         <div className="section-head">
           <div className="kicker-line"><div className="rule"></div><span>Reserve seu horário</span></div>
           <h2>Agendar atendimento</h2>
-          <p>Quatro passos simples e seu horário está garantido.</p>
+          <p>Três passos simples e seu horário está garantido.</p>
         </div>
 
         <div className="booking-shell">
-          {step !== 5 && renderProgress()}
+          {step !== 4 && renderProgress()}
           {renderStep1()}
           {renderDateStep()}
-          {renderStep4()}
-          {renderStep5()}
+          {renderPayment()}
           {renderConfirmation()}
         </div>
       </div>

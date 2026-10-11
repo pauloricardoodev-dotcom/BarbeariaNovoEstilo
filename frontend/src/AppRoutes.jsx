@@ -11,11 +11,11 @@ const AdminDashboard = lazy(() => import('./admin/AdminDashboard.jsx'));
 const AppRoutes = () => (
   <Suspense fallback={null}>
     <Routes>
-      <Route path="/" element={<App />} />
       <Route path="/admin/*" element={<AdminDashboard />} />
       {/* Endereço antigo do admin */}
       <Route path="/admin.html" element={<Navigate to="/admin" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Site público: home e telas de conta (rotas internas em App.jsx) */}
+      <Route path="/*" element={<App />} />
     </Routes>
   </Suspense>
 );

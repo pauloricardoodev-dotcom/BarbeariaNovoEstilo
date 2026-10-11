@@ -18,7 +18,7 @@ export const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho
 export const TIMES_MANHA = ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30'];
 export const TIMES_TARDE = ['14:00', '14:30', '15:00', '15:30', '16:00', '16:30'];
 
-export const STEP_LABELS = ['Serviço', 'Data e horário', 'Dados', 'Pagamento'];
+export const STEP_LABELS = ['Serviço', 'Data e horário', 'Pagamento'];
 
 export const HERO_STATS = [
   { icon: 'calendar', value: '13+', label: 'Anos de tradição' },

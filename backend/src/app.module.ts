@@ -5,7 +5,9 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ClientesModule } from './clientes/clientes.module.js';
 import { validarEnv } from './config/env.validation.js';
+import { MensagensModule } from './mensagens/mensagens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
@@ -15,6 +17,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
     AuthModule,
+    MensagensModule,
+    ClientesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

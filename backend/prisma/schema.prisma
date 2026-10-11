@@ -33,3 +33,56 @@ model UsuarioAdmin {
 
   @@map("usuarios_admin")
 }
+
+/// Clientes do site. Todo cliente tem conta (e-mail + senha e/ou Google); reservas manuais do admin não criam cliente.
+model Cliente {
+  id                   String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                 String
+  /// E.164 (ex.: +5544999999999), normalizado por clientes/telefone.ts e garantido por CHECK.
+  telefone             String         @unique
+  /// Sempre minúsculo (garantido por CHECK no banco).
+  email                String         @unique
+  /// NULL em conta só-Google. Nunca selecionar em respostas da API.
+  senhaHash            String?        @map("senha_hash")
+  googleSub            String?        @unique @map("google_sub")
+  emailVerificadoEm    DateTime?      @map("email_verificado_em") @db.Timestamptz(6)
+  telefoneVerificadoEm DateTime?      @map("telefone_verificado_em") @db.Timestamptz(6)
+  /// Vai no JWT; incrementar invalida todas as sessões emitidas antes.
+  versaoSessao         Int            @default(0) @map("versao_sessao")
+  termosVersaoAceita   String         @map("termos_versao_aceita")
+  termosAceitosEm      DateTime       @map("termos_aceitos_em") @db.Timestamptz(6)
+  ultimoLoginEm        DateTime?      @map("ultimo_login_em") @db.Timestamptz(6)
+  ativo                Boolean        @default(true)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_clientes_updated_at.
+  updatedAt            DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  tokens               TokenCliente[]
+
+  @@map("clientes")
+}
+
+enum TipoTokenCliente {
+  verificar_email
+  verificar_telefone
+  recuperar_senha
+
+  @@map("tipo_token_cliente")
+}
+
+/// Códigos de verificação e tokens de recuperação de senha. Só o HMAC do valor é guardado.
+model TokenCliente {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId  String           @map("cliente_id") @db.Uuid
+  tipo       TipoTokenCliente
+  tokenHash  String           @map("token_hash")
+  expiraEm   DateTime         @map("expira_em") @db.Timestamptz(6)
+  /// Preenchido quando o token é usado ou substituído por um mais novo.
+  usadoEm    DateTime?        @map("usado_em") @db.Timestamptz(6)
+  tentativas Int              @default(0)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  cliente    Cliente          @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  @@index([clienteId, tipo, createdAt])
+  @@index([tipo, tokenHash])
+  @@map("tokens_clientes")
+}
