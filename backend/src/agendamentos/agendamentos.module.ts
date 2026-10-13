@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import {
   AdminAgendamentosController,
+  AdminReagendamentosController,
   AdminSolicitacoesController,
   ClienteAgendamentosController,
   DisponibilidadeController,
@@ -12,6 +13,7 @@ import { AgendamentosService } from './agendamentos.service.js';
     DisponibilidadeController,
     ClienteAgendamentosController,
     AdminAgendamentosController,
+    AdminReagendamentosController,
     AdminSolicitacoesController,
   ],
   providers: [AgendamentosService],

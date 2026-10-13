@@ -3,12 +3,13 @@ import Icone from './Icones';
 
 const NAV_ITEMS = [
   { path: '/admin/agenda', icon: 'agenda', label: 'Agenda' },
+  { path: '/admin/notificacoes', icon: 'sino', label: 'Notificações', indicador: true },
   { path: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { path: '/admin/servicos', icon: 'servicos', label: 'Serviços' },
   { path: '/admin/configuracoes', icon: 'configuracoes', label: 'Configurações' },
 ];
 
-const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
+const AdminSidebar = ({ collapsed, onToggle, user, onLogout, notificacoes = 0 }) => {
   const handleLogout = () => {
     onLogout();
   };
@@ -49,7 +50,12 @@ const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
                 }
                 title={item.label}
               >
-                <Icone nome={item.icon} />
+                <span className="sidebar-icone">
+                  <Icone nome={item.icon} />
+                  {item.indicador && notificacoes > 0 && (
+                    <span className="sidebar-dot" role="status" aria-label="Há notificações novas" />
+                  )}
+                </span>
                 {!collapsed && <span className="text-truncate">{item.label}</span>}
               </NavLink>
             </li>

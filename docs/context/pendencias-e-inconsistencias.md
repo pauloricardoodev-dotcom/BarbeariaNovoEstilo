@@ -16,3 +16,5 @@
 
 ## Refatoração visual em andamento (`RefatorancaoVisual.md`)
 Hero (layout, estatísticas, bordas/decoração), Header com "Profissionais", nova seção "Nossa equipe" com cards de profissionais e imagens. Verificar o arquivo antes de mexer em UI do site.
+
+- Cancelamento direto pelo barbeiro **sem pedido do cliente** ainda não avisa o cliente (decisão de pedido de cancelamento e reagendamento pelo barbeiro avisam por WhatsApp). Em produção os 3 templates de aviso precisam ser aprovados pela Meta.

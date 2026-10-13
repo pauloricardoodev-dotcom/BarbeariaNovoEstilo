@@ -32,6 +32,7 @@ model UsuarioAdmin {
   updatedAt              DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
   agendamentosCancelados Agendamento[]
   solicitacoesDecididas  SolicitacaoCancelamento[]
+  reagendamentosVistos   Reagendamento[]
 
   @@map("usuarios_admin")
 }
@@ -163,14 +164,27 @@ model Agendamento {
   @@map("agendamentos")
 }
 
+enum OrigemReagendamento {
+  cliente
+  admin
+
+  @@map("origem_reagendamento")
+}
+
 /// Histórico de reagendamentos (um registro por mudança de horário).
+/// Reagendamento do cliente não precisa de aprovação: vira notificação para o barbeiro até ele marcar como visto.
 model Reagendamento {
-  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agendamentoId  String      @map("agendamento_id") @db.Uuid
-  inicioAnterior DateTime    @map("inicio_anterior") @db.Timestamptz(6)
-  inicioNovo     DateTime    @map("inicio_novo") @db.Timestamptz(6)
-  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  agendamento    Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Restrict)
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agendamentoId  String              @map("agendamento_id") @db.Uuid
+  inicioAnterior DateTime            @map("inicio_anterior") @db.Timestamptz(6)
+  inicioNovo     DateTime            @map("inicio_novo") @db.Timestamptz(6)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  origem         OrigemReagendamento @default(cliente)
+  /// Quando o barbeiro viu a notificação. Nulo = notificação pendente (só para origem cliente; CHECK na migration).
+  vistoEm        DateTime?           @map("visto_em") @db.Timestamptz(6)
+  vistoPor       String?             @map("visto_por") @db.Uuid
+  agendamento    Agendamento         @relation(fields: [agendamentoId], references: [id], onDelete: Restrict)
+  visor          UsuarioAdmin?       @relation(fields: [vistoPor], references: [id], onDelete: Restrict)
 
   @@index([agendamentoId, createdAt])
   @@map("reagendamentos")

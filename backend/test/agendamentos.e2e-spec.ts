@@ -12,6 +12,11 @@ import { instante } from '../src/agendamentos/horarios.js';
 import { gerarHashSenha } from '../src/auth/senha.js';
 import { configurarApp } from '../src/configurar-app.js';
 import { Prisma } from '../src/generated/prisma/client.js';
+import {
+  WhatsAppService,
+  type AvisoCancelamento,
+  type AvisoReagendamento,
+} from '../src/mensagens/mensagens.types.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 // Quarta-feira, 14/10/2026, 15:00 em São Paulo.
@@ -53,6 +58,25 @@ interface Sol {
 const dec = (n: number) => ({ toNumber: () => n });
 const min = (m: number) => m * 60_000;
 
+class WhatsAppFake extends WhatsAppService {
+  avisos: { telefone: string; aviso: AvisoCancelamento }[] = [];
+  avisosReagendamento: { telefone: string; aviso: AvisoReagendamento }[] = [];
+  falhar = false;
+  enviarCodigoVerificacao() {
+    return Promise.resolve();
+  }
+  enviarAvisoReagendamento(telefone: string, aviso: AvisoReagendamento) {
+    if (this.falhar) return Promise.reject(new Error('Meta fora do ar'));
+    this.avisosReagendamento.push({ telefone, aviso });
+    return Promise.resolve();
+  }
+  enviarAvisoCancelamento(telefone: string, aviso: AvisoCancelamento) {
+    if (this.falhar) return Promise.reject(new Error('Meta fora do ar'));
+    this.avisos.push({ telefone, aviso });
+    return Promise.resolve();
+  }
+}
+
 function erroPrisma(code: string) {
   return new Prisma.PrismaClientKnownRequestError('falha', {
     code,
@@ -64,11 +88,22 @@ describe('Agendamentos (e2e)', () => {
   let app: INestApplication<App>;
   let agendamentos: Ag[];
   let solicitacoes: Sol[];
-  let reagendamentos: { agendamentoId: string; inicioAnterior: Date; inicioNovo: Date }[];
+  interface Reag {
+    id: string;
+    agendamentoId: string;
+    inicioAnterior: Date;
+    inicioNovo: Date;
+    origem: string;
+    createdAt: Date;
+    vistoEm: Date | null;
+    vistoPor: string | null;
+  }
+  let reagendamentos: Reag[];
   let seq: number;
   /** Simula a corrida: a consulta de ocupados não enxerga ninguém, mas o INSERT bate no EXCLUDE. */
   let esconderOcupados = false;
   let storage = new ThrottlerStorageService();
+  const whatsapp = new WhatsAppFake();
   let cookieAdmin: string;
   let cookieA: string;
   let cookieB: string;
@@ -249,8 +284,29 @@ describe('Agendamentos (e2e)', () => {
       },
       reagendamento: {
         create: ({ data }: any) => {
-          reagendamentos.push(data);
-          return Promise.resolve(data);
+          const r: Reag = { id: novoId(), createdAt: new Date(), vistoEm: null, vistoPor: null, ...data };
+          reagendamentos.push(r);
+          return Promise.resolve(r);
+        },
+        findMany: ({ where }: any) =>
+          Promise.resolve(
+            reagendamentos
+              .filter((r) => (where.origem === undefined || r.origem === where.origem) && (where.vistoEm !== null || r.vistoEm === null))
+              .map((r) => {
+                const a = agendamentos.find((x) => x.id === r.agendamentoId)!;
+                return { ...r, agendamento: proj(a) };
+              }),
+          ),
+        findUnique: ({ where }: any) => Promise.resolve(reagendamentos.find((r) => r.id === where.id) ?? null),
+        updateMany: ({ where, data }: any) => {
+          const alvos = reagendamentos.filter(
+            (r) =>
+              (where.id === undefined || r.id === where.id) &&
+              (where.origem === undefined || r.origem === where.origem) &&
+              (where.vistoEm !== null || r.vistoEm === null),
+          );
+          alvos.forEach((r) => Object.assign(r, data));
+          return Promise.resolve({ count: alvos.length });
         },
       },
       solicitacaoCancelamento: {
@@ -289,7 +345,11 @@ describe('Agendamentos (e2e)', () => {
           return s ? Promise.resolve(projSol(s)) : Promise.reject(erroPrisma('P2025'));
         },
         findMany: ({ where }: any) =>
-          Promise.resolve(solicitacoes.filter((s) => !where?.status || s.status === where.status).map(projSol)),
+          Promise.resolve(
+            solicitacoes
+              .filter((s) => (!where?.status || s.status === where.status) && (!where?.agendamentoId || s.agendamentoId === where.agendamentoId))
+              .map(projSol),
+          ),
         count: ({ where }: any) =>
           Promise.resolve(solicitacoes.filter((s) => !where?.status || s.status === where.status).length),
       },
@@ -303,6 +363,8 @@ describe('Agendamentos (e2e)', () => {
       .useValue(fake)
       .overrideProvider(ThrottlerStorage)
       .useValue(throttler)
+      .overrideProvider(WhatsAppService)
+      .useValue(whatsapp)
       .compile();
     app = moduleRef.createNestApplication();
     configurarApp(app);
@@ -337,6 +399,9 @@ describe('Agendamentos (e2e)', () => {
     reagendamentos = [];
     seq = 0;
     esconderOcupados = false;
+    whatsapp.avisos = [];
+    whatsapp.avisosReagendamento = [];
+    whatsapp.falhar = false;
     storage = new ThrottlerStorageService();
   });
 
@@ -516,8 +581,8 @@ describe('Agendamentos (e2e)', () => {
       const ag = semear({ inicio: instante('2026-10-15', '10:00') });
       const res = await reagendar(cookieA, ag.id, novo).expect(200);
       expect(res.body).toMatchObject({ data: '2026-10-16', hora: '14:00', duracaoMinutos: 45, status: 'agendado' });
-      expect(reagendamentos).toEqual([
-        { agendamentoId: ag.id, inicioAnterior: instante('2026-10-15', '10:00'), inicioNovo: instante('2026-10-16', '14:00') },
+      expect(reagendamentos).toMatchObject([
+        { agendamentoId: ag.id, inicioAnterior: instante('2026-10-15', '10:00'), inicioNovo: instante('2026-10-16', '14:00'), origem: 'cliente', vistoEm: null },
       ]);
     });
 
@@ -782,6 +847,231 @@ describe('Agendamentos (e2e)', () => {
       const outro = pedido(instante('2026-10-16', '10:00'));
       await decidir(outro.s.id, {}).expect(400);
       await decidir(outro.s.id, { aprovar: 'sim' }).expect(400);
+    });
+  });
+
+  // ------------------------------------------------- admin: trocar de horário
+
+  describe('POST /api/admin/agendamentos/:id/reagendar (Trocar de horário)', () => {
+    const trocar = (id: string, body: object) =>
+      http().post(`/api/admin/agendamentos/${id}/reagendar`).set('Cookie', cookieAdmin).send(body);
+
+    it('move para outro dia/hora, mantém serviço e duração e grava o histórico', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      const res = await trocar(ag.id, { data: '2026-10-16', hora: '11:20' }).expect(200);
+      expect(res.body).toMatchObject({ data: '2026-10-16', hora: '11:20', duracaoMinutos: 45, status: 'agendado' });
+      expect(reagendamentos).toMatchObject([
+        { agendamentoId: ag.id, inicioAnterior: instante('2026-10-15', '10:00'), inicioNovo: instante('2026-10-16', '11:20'), origem: 'admin', vistoPor: ID_ADMIN },
+      ]);
+      expect(reagendamentos[0].vistoEm).not.toBeNull(); // reagendamento do barbeiro nunca vira notificação
+    });
+
+    it('o barbeiro pode usar qualquer minuto, o almoço e até hoje (sem a regra das 2 h do cliente)', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await trocar(ag.id, { data: '2026-10-15', hora: '12:30' }).expect(200);
+      await trocar(ag.id, { data: '2026-10-14', hora: '15:30' }).expect(200); // agora são 15:00
+    });
+
+    it.each([
+      ['no passado', { data: '2026-10-14', hora: '14:00' }],
+      ['domingo', { data: '2026-10-18', hora: '10:00' }],
+      ['depois das 18:00', { data: '2026-10-16', hora: '17:30' }],
+      ['antes das 08:00', { data: '2026-10-16', hora: '07:30' }],
+      ['data inexistente', { data: '2026-02-30', hora: '10:00' }],
+      ['corpo incompleto', { data: '2026-10-16' }],
+      ['campo desconhecido', { data: '2026-10-16', hora: '10:00', servicoId: 'x' }],
+    ])('recusa %s com 400', async (_n, body) => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await trocar(ag.id, body).expect(400);
+      expect(agendamentos[0].inicio).toEqual(instante('2026-10-15', '10:00'));
+    });
+
+    it('horário ocupado dá 409; o mesmo horário atual dá 400', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      semear({ inicio: instante('2026-10-16', '14:00'), clienteId: ID_B });
+      await trocar(ag.id, { data: '2026-10-16', hora: '14:30' }).expect(409);
+      await trocar(ag.id, { data: '2026-10-15', hora: '10:00' }).expect(400);
+    });
+
+    it('só agendamentos ativos e que ainda não começaram; inexistente 404', async () => {
+      const passado = semear({ inicio: instante('2026-10-14', '14:00') });
+      await trocar(passado.id, { data: '2026-10-16', hora: '10:00' }).expect(409);
+      const cancelado = semear({ inicio: instante('2026-10-20', '10:00'), status: 'cancelado', canceladoEm: AGORA });
+      await trocar(cancelado.id, { data: '2026-10-21', hora: '10:00' }).expect(409);
+      await trocar(ID_INEXISTENTE, { data: '2026-10-21', hora: '10:00' }).expect(404);
+    });
+
+    it('exige sessão de admin', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await http().post(`/api/admin/agendamentos/${ag.id}/reagendar`).send({ data: '2026-10-16', hora: '10:00' }).expect(401);
+      await http()
+        .post(`/api/admin/agendamentos/${ag.id}/reagendar`)
+        .set('Cookie', cookieA)
+        .send({ data: '2026-10-16', hora: '10:00' })
+        .expect(401);
+    });
+
+    it('corrida: o EXCLUDE do banco barra e vira 409', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      semear({ inicio: instante('2026-10-16', '14:00'), clienteId: ID_B });
+      esconderOcupados = true;
+      await trocar(ag.id, { data: '2026-10-16', hora: '14:00' }).expect(409);
+      expect(agendamentos[0].inicio).toEqual(instante('2026-10-15', '10:00'));
+    });
+  });
+
+  // -------------------------------------------- WhatsApp: decisão do cancelamento
+
+  describe('aviso por WhatsApp ao cliente quando o cancelamento é decidido', () => {
+    function pedido(extra: Partial<Ag> = {}) {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00'), ...extra });
+      const sol: Sol = { id: novoId(), agendamentoId: ag.id, motivo: 'Imprevisto', status: 'pendente', resposta: null, decididoEm: null, decididoPor: null, createdAt: AGORA };
+      solicitacoes.push(sol);
+      return { ag, sol };
+    }
+    const decidir = (id: string, body: object) =>
+      http().post(`/api/admin/solicitacoes-cancelamento/${id}/decidir`).set('Cookie', cookieAdmin).send(body);
+
+    it('aprovar avisa o cliente com serviço, dia, hora e a mensagem do barbeiro', async () => {
+      const { sol } = pedido();
+      await decidir(sol.id, { aprovar: true, resposta: 'Sem problemas' }).expect(200);
+      await vi.waitFor(() => expect(whatsapp.avisos).toHaveLength(1));
+      expect(whatsapp.avisos[0]).toEqual({
+        telefone: '+5541999990000',
+        aviso: { aprovado: true, servico: 'Corte Masculino', data: '15/10/2026', hora: '10:00', resposta: 'Sem problemas' },
+      });
+    });
+
+    it('recusar avisa que o horário foi mantido (e que ficou sem mensagem extra)', async () => {
+      const { sol } = pedido();
+      await decidir(sol.id, { aprovar: false }).expect(200);
+      await vi.waitFor(() => expect(whatsapp.avisos).toHaveLength(1));
+      expect(whatsapp.avisos[0].aviso).toMatchObject({ aprovado: false, data: '15/10/2026', hora: '10:00', resposta: null });
+    });
+
+    it('cancelar direto um agendamento com pedido pendente também avisa (aprovado)', async () => {
+      const { ag } = pedido();
+      await http().patch(`/api/admin/agendamentos/${ag.id}`).set('Cookie', cookieAdmin).send({ status: 'cancelado' }).expect(200);
+      await vi.waitFor(() => expect(whatsapp.avisos).toHaveLength(1));
+      expect(whatsapp.avisos[0].aviso.aprovado).toBe(true);
+    });
+
+    it('cancelar direto sem pedido pendente não manda aviso (nada foi decidido)', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await http().patch(`/api/admin/agendamentos/${ag.id}`).set('Cookie', cookieAdmin).send({ status: 'cancelado' }).expect(200);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(whatsapp.avisos).toHaveLength(0);
+    });
+
+    it('se o WhatsApp falhar, a decisão do barbeiro continua valendo (200) e nada quebra', async () => {
+      whatsapp.falhar = true;
+      const { ag, sol } = pedido();
+      const res = await decidir(sol.id, { aprovar: true }).expect(200);
+      expect(res.body.status).toBe('aprovada');
+      await new Promise((r) => setTimeout(r, 50));
+      expect(agendamentos.find((a) => a.id === ag.id)!.status).toBe('cancelado');
+      expect(whatsapp.avisos).toHaveLength(0);
+    });
+  });
+
+  // ----------------------------- notificação de reagendamento (sem aprovação)
+
+  describe('reagendamento do cliente vira notificação para o barbeiro (sem aprovação)', () => {
+    const reagendarComoCliente = (cookie: string, id: string, body: object) =>
+      http().post(`/api/clientes/me/agendamentos/${id}/reagendar`).set('Cookie', cookie).send(body);
+    const novos = () => http().get('/api/admin/reagendamentos/novos').set('Cookie', cookieAdmin);
+
+    it('o cliente reagenda na hora (200, sem aprovação) e o barbeiro recebe a notificação com de/para', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      const res = await reagendarComoCliente(cookieA, ag.id, { data: '2026-10-16', hora: '14:00' }).expect(200);
+      expect(res.body).toMatchObject({ data: '2026-10-16', hora: '14:00', status: 'agendado' });
+
+      const lista = await novos().expect(200);
+      expect(lista.body).toHaveLength(1);
+      expect(lista.body[0]).toMatchObject({
+        de: { data: '2026-10-15', hora: '10:00' },
+        para: { data: '2026-10-16', hora: '14:00' },
+        agendamento: { servicoNome: 'Corte Masculino', cliente: { nome: 'Ana Souza' } },
+      });
+    });
+
+    it('marcar como visto tira da lista; repetir não dá erro; id inexistente dá 404', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await reagendarComoCliente(cookieA, ag.id, { data: '2026-10-16', hora: '14:00' }).expect(200);
+      const id = (await novos().expect(200)).body[0].id;
+
+      await http().post(`/api/admin/reagendamentos/${id}/visto`).set('Cookie', cookieAdmin).expect(204);
+      expect((await novos().expect(200)).body).toHaveLength(0);
+      expect(reagendamentos[0]).toMatchObject({ vistoPor: ID_ADMIN });
+      await http().post(`/api/admin/reagendamentos/${id}/visto`).set('Cookie', cookieAdmin).expect(204);
+      await http().post(`/api/admin/reagendamentos/${ID_INEXISTENTE}/visto`).set('Cookie', cookieAdmin).expect(404);
+    });
+
+    it('marcar todos como vistos', async () => {
+      const a1 = semear({ inicio: instante('2026-10-15', '10:00') });
+      const a2 = semear({ inicio: instante('2026-10-16', '10:00') });
+      await reagendarComoCliente(cookieA, a1.id, { data: '2026-10-19', hora: '09:00' }).expect(200);
+      await reagendarComoCliente(cookieA, a2.id, { data: '2026-10-19', hora: '15:00' }).expect(200);
+      expect((await novos().expect(200)).body).toHaveLength(2);
+      await http().post('/api/admin/reagendamentos/visto').set('Cookie', cookieAdmin).expect(204);
+      expect((await novos().expect(200)).body).toHaveLength(0);
+    });
+
+    it('o reagendamento feito pelo próprio barbeiro não gera notificação', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await http()
+        .post(`/api/admin/agendamentos/${ag.id}/reagendar`)
+        .set('Cookie', cookieAdmin)
+        .send({ data: '2026-10-16', hora: '11:00' })
+        .expect(200);
+      expect((await novos().expect(200)).body).toHaveLength(0);
+    });
+
+    it('exige sessão de admin (cliente e anônimo: 401)', async () => {
+      await http().get('/api/admin/reagendamentos/novos').expect(401);
+      await http().get('/api/admin/reagendamentos/novos').set('Cookie', cookieA).expect(401);
+      await http().post('/api/admin/reagendamentos/visto').set('Cookie', cookieA).expect(401);
+    });
+  });
+
+  // ------------------- aviso por WhatsApp ao cliente quando o barbeiro reagenda
+
+  describe('aviso por WhatsApp ao cliente quando o barbeiro reagenda', () => {
+    const reagendarComoAdmin = (id: string, body: object) =>
+      http().post(`/api/admin/agendamentos/${id}/reagendar`).set('Cookie', cookieAdmin).send(body);
+
+    it('avisa o cliente com o serviço e o NOVO dia e hora', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await reagendarComoAdmin(ag.id, { data: '2026-10-16', hora: '14:20' }).expect(200);
+      await vi.waitFor(() => expect(whatsapp.avisosReagendamento).toHaveLength(1));
+      expect(whatsapp.avisosReagendamento[0]).toEqual({
+        telefone: '+5541999990000',
+        aviso: { servico: 'Corte Masculino', data: '16/10/2026', hora: '14:20' },
+      });
+    });
+
+    it('reserva manual (sem telefone) não tem a quem avisar, mas o reagendamento funciona', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00'), clienteId: null, nomeAvulso: 'Seu Zé' });
+      await reagendarComoAdmin(ag.id, { data: '2026-10-16', hora: '14:20' }).expect(200);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(whatsapp.avisosReagendamento).toHaveLength(0);
+    });
+
+    it('se o WhatsApp falhar, o reagendamento continua valendo (200)', async () => {
+      whatsapp.falhar = true;
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      const res = await reagendarComoAdmin(ag.id, { data: '2026-10-16', hora: '14:20' }).expect(200);
+      expect(res.body).toMatchObject({ data: '2026-10-16', hora: '14:20' });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(whatsapp.avisosReagendamento).toHaveLength(0);
+    });
+
+    it('um reagendamento recusado (conflito) não avisa ninguém', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      semear({ inicio: instante('2026-10-16', '14:00'), clienteId: ID_B });
+      await reagendarComoAdmin(ag.id, { data: '2026-10-16', hora: '14:30' }).expect(409);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(whatsapp.avisosReagendamento).toHaveLength(0);
     });
   });
 });

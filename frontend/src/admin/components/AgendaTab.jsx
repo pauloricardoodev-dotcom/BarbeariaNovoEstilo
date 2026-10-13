@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import {
-  atualizarStatusAgendamento,
-  listarAgendamentos,
-  listarSolicitacoesPendentes,
-} from '../api/agendamentos';
+import { Link } from 'react-router';
+import { atualizarStatusAgendamento, listarAgendamentos } from '../api/agendamentos';
 import PageHeader from './PageHeader';
 import Calendar from './Calendar';
 import DailySchedule from './DailySchedule';
 import AgendamentoModal from './AgendamentoModal';
 import CreateReservationModal from './CreateReservationModal';
-import SolicitacoesCancelamento from './SolicitacoesCancelamento';
 
 const pad = (n) => String(n).padStart(2, '0');
+
+// A Agenda se atualiza sozinha: reconsulta a API a cada tanto, e ao voltar para a aba/janela.
+const INTERVALO_ATUALIZACAO_MS = 15_000;
 
 /** Primeiro e último dia do mês, 'AAAA-MM-DD', para buscar só o que o calendário mostra. */
 const limitesDoMes = ({ y, m }) => ({
@@ -19,8 +18,9 @@ const limitesDoMes = ({ y, m }) => ({
   ate: `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`,
 });
 
-// Agenda ligada à API: agendamentos do mês, pedidos de cancelamento pendentes e reserva manual.
-const AgendaTab = () => {
+// Agenda ligada à API: agendamentos do mês e reserva manual. Os pedidos de cancelamento ficam em Notificações;
+// `notificacoes` só alimenta o aviso com link, e `onNotificacoesMudaram` reconsulta o menu quando algo muda aqui.
+const AgendaTab = ({ notificacoes = 0, onNotificacoesMudaram }) => {
   const [mes, setMes] = useState(() => {
     const hoje = new Date();
     return { y: hoje.getFullYear(), m: hoje.getMonth() };
@@ -28,23 +28,23 @@ const AgendaTab = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [view, setView] = useState('calendar'); // 'calendar' ou 'day'
   const [agendamentos, setAgendamentos] = useState([]);
-  const [solicitacoes, setSolicitacoes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
   const [recarga, setRecarga] = useState(0);
   const [concluindoId, setConcluindoId] = useState(null);
+  const [atualizadoEm, setAtualizadoEm] = useState(null);
   const [selecionado, setSelecionado] = useState(null);
   const [reserva, setReserva] = useState(null); // null = fechado | { data }
 
   // Recarrega ao trocar de mês e depois de qualquer alteração (recarga++).
   useEffect(() => {
     let cancelado = false;
-    Promise.all([listarAgendamentos(limitesDoMes(mes)), listarSolicitacoesPendentes()])
-      .then(([lista, pendentes]) => {
+    listarAgendamentos(limitesDoMes(mes))
+      .then((lista) => {
         if (cancelado) return;
         setAgendamentos(lista);
-        setSolicitacoes(pendentes);
+        setAtualizadoEm(new Date());
         setErro('');
       })
       .catch((err) => !cancelado && setErro(err.message))
@@ -54,11 +54,27 @@ const AgendaTab = () => {
     };
   }, [mes, recarga]);
 
+  // Mudanças feitas por clientes (agendar, reagendar, pedir cancelamento) aparecem sem recarregar a página.
+  useEffect(() => {
+    const atualizar = () => {
+      if (document.visibilityState === 'visible') setRecarga((n) => n + 1);
+    };
+    const id = setInterval(atualizar, INTERVALO_ATUALIZACAO_MS);
+    document.addEventListener('visibilitychange', atualizar);
+    window.addEventListener('focus', atualizar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', atualizar);
+      window.removeEventListener('focus', atualizar);
+    };
+  }, []);
+
   const aposMudanca = (mensagem) => {
     setSelecionado(null);
     setReserva(null);
     setSucesso(mensagem);
     setRecarga((n) => n + 1);
+    onNotificacoesMudaram?.();
   };
 
   // Botão "Feito" da agenda do dia: conclui o atendimento sem abrir o modal.
@@ -112,9 +128,24 @@ const AgendaTab = () => {
         </div>
       )}
 
-      <SolicitacoesCancelamento solicitacoes={solicitacoes} onDecidida={aposMudanca} />
+      {notificacoes > 0 && (
+        <div className="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2" role="status">
+          <span>
+            {notificacoes === 1 ? 'Você tem 1 notificação nova.' : `Você tem ${notificacoes} notificações novas.`}
+          </span>
+          <Link to="/admin/notificacoes" className="btn btn-sm btn-warning">
+            Ver notificações
+          </Link>
+        </div>
+      )}
 
       {carregando && <p className="text-secondary">Carregando agenda…</p>}
+      {atualizadoEm && (
+        <p className="small text-secondary text-end mb-2">
+          Atualiza sozinha · última atualização às{' '}
+          {atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </p>
+      )}
 
       {view === 'calendar' ? (
         <Calendar mes={mes} onMonthChange={setMes} onDateSelect={handleDateSelect} appointments={agendamentos} />

@@ -3,10 +3,12 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { ClienteAutenticado } from '../clientes/clientes.types.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { WhatsAppService } from '../mensagens/mensagens.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   AtualizarAgendamentoAdminDto,
@@ -23,6 +25,7 @@ import {
   dataNaJanela,
   dataSP,
   dataValida,
+  formatarDataBR,
   horaSP,
   horarioDeAdminValido,
   horarioDeClienteValido,
@@ -185,6 +188,19 @@ export interface SolicitacaoAdmin {
   };
 }
 
+export interface ReagendamentoNovo {
+  id: string;
+  criadoEm: string;
+  /** Dia/hora anteriores e novos, no relógio de São Paulo. */
+  de: { data: string; hora: string };
+  para: { data: string; hora: string };
+  agendamento: {
+    id: string;
+    servicoNome: string;
+    cliente: { id: string; nome: string; telefone: string } | null;
+  };
+}
+
 export interface Pagina<T> {
   itens: T[];
   total: number;
@@ -299,7 +315,12 @@ function ehViolacaoDeUnicidade(erro: unknown): boolean {
 
 @Injectable()
 export class AgendamentosService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(AgendamentosService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly whatsapp: WhatsAppService,
+  ) {}
 
   /** Relógio do servidor; isolado para facilitar testes. */
   protected agora(): Date {
@@ -475,18 +496,40 @@ export class AgendamentosService {
     if (novoInicio.getTime() === atual.inicio.getTime()) {
       throw new BadRequestException('Escolha um horário diferente do atual.');
     }
+    await this.mover(atual, novoInicio, dto.data, { origem: 'cliente' });
+    const atualizado = await this.prisma.agendamento.findUniqueOrThrow({
+      where: { id: atual.id },
+      select: SELECAO_CLIENTE,
+    });
+    return paraCliente(atualizado, agora);
+  }
+
+  /**
+   * Move um agendamento para um novo início (cliente e admin usam o mesmo caminho): confere ocupação,
+   * só altera se ninguém mexeu nele desde a leitura, grava o histórico e deixa o EXCLUDE do banco
+   * como garantia final contra dupla reserva.
+   */
+  private async mover(
+    atual: { id: string; inicio: Date; duracaoMinutos: number },
+    novoInicio: Date,
+    data: string,
+    // Quem reagendou: o cliente gera notificação para o barbeiro; o admin já nasce "visto".
+    quem: { origem: 'cliente' } | { origem: 'admin'; adminId: string },
+  ): Promise<void> {
     const novoFim = new Date(
       novoInicio.getTime() + atual.duracaoMinutos * 60_000,
     );
-
     try {
-      const atualizado = await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction(async (tx) => {
         // O próprio agendamento não conta como ocupante do novo horário.
-        const ocupados = await this.ocupadosDoDia(tx, dto.data, atual.id);
-        if (ocupados.some((o) => sobrepoe({ inicio: novoInicio, fim: novoFim }, o))) {
+        const ocupados = await this.ocupadosDoDia(tx, data, atual.id);
+        if (
+          ocupados.some((o) =>
+            sobrepoe({ inicio: novoInicio, fim: novoFim }, o),
+          )
+        ) {
           throw new ConflictException(MSG_CONFLITO);
         }
-        // Só muda se ninguém alterou o agendamento desde a leitura (admin cancelou, outro reagendamento).
         const { count } = await tx.agendamento.updateMany({
           where: { id: atual.id, status: 'agendado', inicio: atual.inicio },
           data: { inicio: novoInicio },
@@ -501,14 +544,13 @@ export class AgendamentosService {
             agendamentoId: atual.id,
             inicioAnterior: atual.inicio,
             inicioNovo: novoInicio,
+            origem: quem.origem,
+            ...(quem.origem === 'admin'
+              ? { vistoEm: new Date(), vistoPor: quem.adminId }
+              : {}),
           },
         });
-        return tx.agendamento.findUniqueOrThrow({
-          where: { id: atual.id },
-          select: SELECAO_CLIENTE,
-        });
       });
-      return paraCliente(atualizado, agora);
     } catch (erro) {
       if (ehConflitoDeHorario(erro)) throw new ConflictException(MSG_CONFLITO);
       throw erro;
@@ -658,7 +700,7 @@ export class AgendamentosService {
       });
       if (count !== 1) throw new ConflictException('O agendamento mudou.');
     } else {
-      await this.prisma.$transaction(async (tx) => {
+      const aprovadas = await this.prisma.$transaction(async (tx) => {
         const { count } = await tx.agendamento.updateMany({
           where: { id, status: 'agendado' },
           data: {
@@ -669,17 +711,126 @@ export class AgendamentosService {
         });
         if (count !== 1) throw new ConflictException('O agendamento mudou.');
         // Cancelar direto resolve qualquer pedido de cancelamento pendente do cliente.
+        const pendentes = await tx.solicitacaoCancelamento.findMany({
+          where: { agendamentoId: id, status: 'pendente' },
+          select: { id: true },
+        });
         await tx.solicitacaoCancelamento.updateMany({
           where: { agendamentoId: id, status: 'pendente' },
           data: { status: 'aprovada', decididoEm: agora, decididoPor: adminId },
         });
+        return pendentes;
       });
+      for (const p of aprovadas) void this.avisarDecisao(p.id);
     }
     const atualizado = await this.prisma.agendamento.findUniqueOrThrow({
       where: { id },
       select: SELECAO_ADMIN,
     });
     return paraAdmin(atualizado);
+  }
+
+  /**
+   * Barbeiro reagenda um agendamento (botão `Reagendamento`). Pode usar qualquer minuto e o
+   * horário de almoço, mas dentro do expediente, fora de domingo e nunca no passado. O serviço e a
+   * duração não mudam, e o cliente é avisado por WhatsApp (sem precisar de aprovação de ninguém).
+   */
+  async reagendarAdmin(
+    adminId: string,
+    id: string,
+    dto: ReagendarDto,
+  ): Promise<AgendamentoAdmin> {
+    this.exigirDataEHora(dto.data, dto.hora);
+    const agora = this.agora();
+    const atual = await this.prisma.agendamento.findUnique({
+      where: { id },
+      select: { id: true, inicio: true, duracaoMinutos: true, status: true },
+    });
+    if (!atual) throw new NotFoundException('Agendamento não encontrado.');
+    if (atual.status !== 'agendado') {
+      throw new ConflictException(
+        'Só agendamentos ativos podem ter o horário trocado.',
+      );
+    }
+    if (atual.inicio <= agora) {
+      throw new ConflictException(
+        'Atendimento que já começou ou passou não pode ser reagendado.',
+      );
+    }
+    if (!horarioDeAdminValido(dto.data, dto.hora, atual.duracaoMinutos)) {
+      throw new BadRequestException(
+        'Fora do expediente (segunda a sábado, 08:00–18:00).',
+      );
+    }
+    const novoInicio = instante(dto.data, dto.hora);
+    if (novoInicio < agora) {
+      throw new BadRequestException('Não é possível marcar no passado.');
+    }
+    if (novoInicio.getTime() === atual.inicio.getTime()) {
+      throw new BadRequestException('Escolha um horário diferente do atual.');
+    }
+    await this.mover(atual, novoInicio, dto.data, { origem: 'admin', adminId });
+    void this.avisarReagendamento(id);
+    const atualizado = await this.prisma.agendamento.findUniqueOrThrow({
+      where: { id },
+      select: SELECAO_ADMIN,
+    });
+    return paraAdmin(atualizado);
+  }
+
+  /** Reagendamentos feitos pelos clientes que o barbeiro ainda não viu (notificações; não precisam de aprovação). */
+  async listarReagendamentosNovos(): Promise<ReagendamentoNovo[]> {
+    const linhas = await this.prisma.reagendamento.findMany({
+      where: { origem: 'cliente', vistoEm: null },
+      select: {
+        id: true,
+        inicioAnterior: true,
+        inicioNovo: true,
+        createdAt: true,
+        agendamento: {
+          select: {
+            id: true,
+            servico: { select: { nome: true } },
+            cliente: { select: { id: true, nome: true, telefone: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+    });
+    return linhas.map((r) => ({
+      id: r.id,
+      criadoEm: r.createdAt.toISOString(),
+      de: { data: dataSP(r.inicioAnterior), hora: horaSP(r.inicioAnterior) },
+      para: { data: dataSP(r.inicioNovo), hora: horaSP(r.inicioNovo) },
+      agendamento: {
+        id: r.agendamento.id,
+        servicoNome: r.agendamento.servico.nome,
+        cliente: r.agendamento.cliente,
+      },
+    }));
+  }
+
+  /** Marca a notificação como vista (idempotente: ver de novo não dá erro). */
+  async marcarReagendamentoVisto(adminId: string, id: string): Promise<void> {
+    const { count } = await this.prisma.reagendamento.updateMany({
+      where: { id, origem: 'cliente', vistoEm: null },
+      data: { vistoEm: this.agora(), vistoPor: adminId },
+    });
+    if (count === 0) {
+      const existe = await this.prisma.reagendamento.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existe) throw new NotFoundException('Reagendamento não encontrado.');
+    }
+  }
+
+  async marcarTodosReagendamentosVistos(adminId: string): Promise<void> {
+    await this.prisma.reagendamento.updateMany({
+      where: { origem: 'cliente', vistoEm: null },
+      data: { vistoEm: this.agora(), vistoPor: adminId },
+    });
   }
 
   async listarSolicitacoes(
@@ -747,10 +898,73 @@ export class AgendamentosService {
       }
     });
 
+    void this.avisarDecisao(id);
+
     const decidida = await this.prisma.solicitacaoCancelamento.findUniqueOrThrow({
       where: { id },
       select: SELECAO_SOLICITACAO,
     });
     return paraSolicitacao(decidida);
+  }
+
+  /** Avisa o cliente (WhatsApp) do novo horário depois que o barbeiro reagenda. Mesmas garantias de `avisarDecisao`. */
+  private async avisarReagendamento(agendamentoId: string): Promise<void> {
+    try {
+      const a = await this.prisma.agendamento.findUnique({
+        where: { id: agendamentoId },
+        select: {
+          inicio: true,
+          servico: { select: { nome: true } },
+          cliente: { select: { telefone: true } },
+        },
+      });
+      if (!a?.cliente) return;
+      await this.whatsapp.enviarAvisoReagendamento(a.cliente.telefone, {
+        servico: a.servico.nome,
+        data: formatarDataBR(dataSP(a.inicio)),
+        hora: horaSP(a.inicio),
+      });
+    } catch (erro) {
+      this.logger.warn(
+        `Falha ao avisar o cliente do reagendamento (agendamento ${agendamentoId}): ${erro instanceof Error ? erro.message : 'erro desconhecido'}`,
+      );
+    }
+  }
+
+  /**
+   * Avisa o cliente (WhatsApp) de que o pedido de cancelamento foi aprovado ou recusado. Roda em segundo
+   * plano e nunca falha a operação do barbeiro: se o envio der errado, só registra no log (sem dados pessoais).
+   * Reservas manuais não têm cliente nem telefone, então não há a quem avisar.
+   */
+  private async avisarDecisao(solicitacaoId: string): Promise<void> {
+    try {
+      const s = await this.prisma.solicitacaoCancelamento.findUnique({
+        where: { id: solicitacaoId },
+        select: {
+          status: true,
+          resposta: true,
+          agendamento: {
+            select: {
+              inicio: true,
+              servico: { select: { nome: true } },
+              cliente: { select: { telefone: true } },
+            },
+          },
+        },
+      });
+      const cliente = s?.agendamento.cliente;
+      if (!s || !cliente || s.status === 'pendente') return;
+      await this.whatsapp.enviarAvisoCancelamento(cliente.telefone, {
+        aprovado: s.status === 'aprovada',
+        servico: s.agendamento.servico.nome,
+        data: formatarDataBR(dataSP(s.agendamento.inicio)),
+        hora: horaSP(s.agendamento.inicio),
+        resposta: s.resposta,
+      });
+    } catch (erro) {
+      this.logger.warn(
+        `Falha ao avisar o cliente (solicitação ${solicitacaoId}): ${erro instanceof Error ? erro.message : 'erro desconhecido'}`,
+      );
+    }
   }
 }

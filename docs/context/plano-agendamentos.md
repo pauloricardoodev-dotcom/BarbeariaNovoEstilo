@@ -57,12 +57,12 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 - [x] Admin: `AgendaTab` lê a API (mês exibido + pedidos pendentes); reserva manual só com nome/serviço/duração (sem profissional, telefone ou e-mail); lista de pedidos de cancelamento com aprovar/recusar e aviso de pendentes; modal com concluir/cancelar. O modal de edição de horário/serviço foi removido (não há rota para isso).
 - Validado de ponta a ponta com o backend real contra um Postgres local descartável (27 verificações: conta não verificada, agendar, horário ocupado, reagendar, pedido de cancelamento recusado/aprovado, reserva manual, isolamento admin × cliente). Falta apenas um teste visual no navegador por você.
 - [ ] Dashboard do admin ainda lê o mock (`mockData.appointments`): ligar aos agendamentos reais.
-- [ ] Aviso de pedidos pendentes também no menu lateral do admin (hoje só aparece dentro da Agenda).
+- [x] Aviso de pedidos pendentes no menu lateral: item "Notificações" (sino) com ponto vermelho, página própria; barbeiro reagenda um agendamento pelo modal ("Reagendamento").
 
 ## Pagamento com cartão (quando houver gateway)
 - [x] Alertas "Deseja cadastrar o cartão?" / confirmação sem cadastrar (front).
 - [ ] Integrar gateway (ex.: Mercado Pago): tokenização no navegador; salvar no perfil só token + bandeira + 4 últimos dígitos; cartão salvo pré-selecionado nos próximos agendamentos; remover cartão em "Minha conta".
 
 ## Depois do MVP
-- Avisar o cliente (WhatsApp/e-mail) quando a solicitação de cancelamento for decidida e quando o admin cancelar.
+- ~~Avisar o cliente quando a solicitação de cancelamento for decidida~~ e ~~quando o barbeiro reagenda~~ — **feitos** (WhatsApp; dependem dos templates da Meta). Reagendamento do cliente notifica o barbeiro em Notificações (migration `20261013150000_reagendamentos_notificacao`, sem aprovação). Falta: avisar quando o barbeiro cancela direto um agendamento sem pedido; avisos por e-mail.
 - Lembretes de agendamento via WhatsApp.

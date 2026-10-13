@@ -16,6 +16,10 @@ export interface Env {
   WHATSAPP_TOKEN: string;
   WHATSAPP_PHONE_NUMBER_ID: string;
   WHATSAPP_TEMPLATE_VERIFICACAO: string;
+  /** Opcionais: sem eles o aviso de cancelamento não é enviado (e só fica no log). */
+  WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO: string;
+  WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO: string;
+  WHATSAPP_TEMPLATE_REAGENDAMENTO: string;
   WHATSAPP_TEMPLATE_IDIOMA: string;
   WHATSAPP_API_VERSAO: string;
 }
@@ -106,6 +110,13 @@ export function validarEnv(config: Record<string, unknown>): Env {
     WHATSAPP_TOKEN: whatsappToken,
     WHATSAPP_PHONE_NUMBER_ID: whatsappPhoneId,
     WHATSAPP_TEMPLATE_VERIFICACAO: whatsappTemplate,
+    WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO: texto(
+      config.WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO,
+    ),
+    WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO: texto(
+      config.WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO,
+    ),
+    WHATSAPP_TEMPLATE_REAGENDAMENTO: texto(config.WHATSAPP_TEMPLATE_REAGENDAMENTO),
     WHATSAPP_TEMPLATE_IDIOMA: texto(config.WHATSAPP_TEMPLATE_IDIOMA, 'pt_BR'),
     WHATSAPP_API_VERSAO: texto(config.WHATSAPP_API_VERSAO, 'v23.0'),
   };

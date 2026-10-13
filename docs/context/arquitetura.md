@@ -35,7 +35,7 @@ admin/
   components/           abas e modais; compartilhados: AdminModal (modal Bootstrap controlado por React), PageHeader, StatusBadge
   data/mockData.js      appointments (~700 linhas), stats, statusLabels, services, professionals
   styles/admin.css      só tema (variáveis Bootstrap, sidebar, calendário, gráfico); o resto é Bootstrap
-frontend/public/assets/ hero.jpg, LogoNE.jpeg ; public/favicon.svg, icons.svg
+frontend/public/assets/ hero.jpg, LogoNE.jpeg ; public/favicon.png (favicon em uso, referenciado em index.html), favicon.svg (antigo, sem uso), icons.svg
 ```
 
 ## Dados

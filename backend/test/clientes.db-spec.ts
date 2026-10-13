@@ -33,6 +33,12 @@ class WhatsAppFake extends WhatsAppService {
     this.enviados.push({ telefone, codigo });
     return Promise.resolve();
   }
+  enviarAvisoCancelamento() {
+    return Promise.resolve();
+  }
+  enviarAvisoReagendamento() {
+    return Promise.resolve();
+  }
 }
 
 let seq = 0;

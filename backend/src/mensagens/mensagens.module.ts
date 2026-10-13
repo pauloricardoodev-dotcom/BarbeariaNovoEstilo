@@ -47,6 +47,18 @@ function emProducao(config: ConfigService<Env, true>): boolean {
               'WHATSAPP_TEMPLATE_VERIFICACAO',
               { infer: true },
             ),
+            WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO: config.get(
+              'WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO',
+              { infer: true },
+            ),
+            WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO: config.get(
+              'WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO',
+              { infer: true },
+            ),
+            WHATSAPP_TEMPLATE_REAGENDAMENTO: config.get(
+              'WHATSAPP_TEMPLATE_REAGENDAMENTO',
+              { infer: true },
+            ),
             WHATSAPP_TEMPLATE_IDIOMA: config.get('WHATSAPP_TEMPLATE_IDIOMA', {
               infer: true,
             }),

@@ -3,6 +3,8 @@ import {
   EmailService,
   FalhaEnvioError,
   WhatsAppService,
+  type AvisoCancelamento,
+  type AvisoReagendamento,
   type EmailMensagem,
 } from './mensagens.types.js';
 
@@ -69,6 +71,9 @@ export class WhatsAppCloudApiService extends WhatsAppService {
       | 'WHATSAPP_TOKEN'
       | 'WHATSAPP_PHONE_NUMBER_ID'
       | 'WHATSAPP_TEMPLATE_VERIFICACAO'
+      | 'WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO'
+      | 'WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO'
+      | 'WHATSAPP_TEMPLATE_REAGENDAMENTO'
       | 'WHATSAPP_TEMPLATE_IDIOMA'
       | 'WHATSAPP_API_VERSAO'
     >,
@@ -76,8 +81,92 @@ export class WhatsAppCloudApiService extends WhatsAppService {
     super();
   }
 
+  private get url(): string {
+    return `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSAO}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  }
+
+  /**
+   * Template (categoria "Utilidade") com 3 variáveis no corpo, nesta ordem:
+   * {{1}} serviço · {{2}} nova data · {{3}} nova hora.
+   */
+  enviarAvisoReagendamento(
+    telefone: string,
+    aviso: AvisoReagendamento,
+  ): Promise<void> {
+    const template = this.env.WHATSAPP_TEMPLATE_REAGENDAMENTO;
+    if (!template) {
+      return Promise.reject(
+        new FalhaEnvioError(
+          'Template de aviso de reagendamento não configurado (WHATSAPP_TEMPLATE_REAGENDAMENTO).',
+        ),
+      );
+    }
+    const texto = (valor: string) => ({ type: 'text', text: valor });
+    return postarJson(this.url, this.env.WHATSAPP_TOKEN, {
+      messaging_product: 'whatsapp',
+      to: telefone.replace(/^\+/, ''),
+      type: 'template',
+      template: {
+        name: template,
+        language: { code: this.env.WHATSAPP_TEMPLATE_IDIOMA },
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              texto(aviso.servico),
+              texto(aviso.data),
+              texto(aviso.hora),
+            ],
+          },
+        ],
+      },
+    });
+  }
+
+  /**
+   * Template (categoria "Utilidade") com 4 variáveis no corpo, nesta ordem:
+   * {{1}} serviço · {{2}} data · {{3}} hora · {{4}} mensagem da barbearia ("—" quando não há).
+   * Há um template para aprovado e outro para recusado.
+   */
+  enviarAvisoCancelamento(
+    telefone: string,
+    aviso: AvisoCancelamento,
+  ): Promise<void> {
+    const template = aviso.aprovado
+      ? this.env.WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO
+      : this.env.WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO;
+    if (!template) {
+      return Promise.reject(
+        new FalhaEnvioError(
+          'Template de aviso de cancelamento não configurado (WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO/RECUSADO).',
+        ),
+      );
+    }
+    const texto = (valor: string) => ({ type: 'text', text: valor });
+    return postarJson(this.url, this.env.WHATSAPP_TOKEN, {
+      messaging_product: 'whatsapp',
+      to: telefone.replace(/^\+/, ''),
+      type: 'template',
+      template: {
+        name: template,
+        language: { code: this.env.WHATSAPP_TEMPLATE_IDIOMA },
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              texto(aviso.servico),
+              texto(aviso.data),
+              texto(aviso.hora),
+              texto(aviso.resposta?.trim() || '—'),
+            ],
+          },
+        ],
+      },
+    });
+  }
+
   enviarCodigoVerificacao(telefone: string, codigo: string): Promise<void> {
-    const url = `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSAO}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const url = this.url;
     return postarJson(url, this.env.WHATSAPP_TOKEN, {
       messaging_product: 'whatsapp',
       to: telefone.replace(/^\+/, ''),

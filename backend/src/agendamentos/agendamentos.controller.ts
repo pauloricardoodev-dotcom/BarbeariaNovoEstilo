@@ -20,6 +20,7 @@ import {
   type AgendamentoAdmin,
   type AgendamentoCliente,
   type Pagina,
+  type ReagendamentoNovo,
   type SolicitacaoAdmin,
 } from './agendamentos.service.js';
 import {
@@ -111,6 +112,17 @@ export class AdminAgendamentosController {
     return this.agendamentos.criarReservaManual(dto);
   }
 
+  /** Trocar o horário (o barbeiro move o atendimento para outro dia/hora livre). */
+  @HttpCode(HttpStatus.OK)
+  @Post(':id/reagendar')
+  reagendar(
+    @UsuarioAtual() admin: UsuarioAutenticado,
+    @Param('id', uuid()) id: string,
+    @Body() dto: ReagendarDto,
+  ): Promise<AgendamentoAdmin> {
+    return this.agendamentos.reagendarAdmin(admin.id, id, dto);
+  }
+
   /** Concluir ou cancelar diretamente (cancelado nunca é apagado). */
   @Patch(':id')
   atualizar(
@@ -119,6 +131,35 @@ export class AdminAgendamentosController {
     @Body() dto: AtualizarAgendamentoAdminDto,
   ): Promise<AgendamentoAdmin> {
     return this.agendamentos.atualizarStatusAdmin(admin.id, id, dto);
+  }
+}
+
+/**
+ * Reagendamentos feitos pelos clientes. Não precisam de aprovação: aparecem em Notificações até o barbeiro
+ * marcar como visto.
+ */
+@Controller('admin/reagendamentos')
+export class AdminReagendamentosController {
+  constructor(private readonly agendamentos: AgendamentosService) {}
+
+  @Get('novos')
+  novos(): Promise<ReagendamentoNovo[]> {
+    return this.agendamentos.listarReagendamentosNovos();
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('visto')
+  async marcarTodosVistos(@UsuarioAtual() admin: UsuarioAutenticado): Promise<void> {
+    await this.agendamentos.marcarTodosReagendamentosVistos(admin.id);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post(':id/visto')
+  async marcarVisto(
+    @UsuarioAtual() admin: UsuarioAutenticado,
+    @Param('id', uuid()) id: string,
+  ): Promise<void> {
+    await this.agendamentos.marcarReagendamentoVisto(admin.id, id);
   }
 }
 

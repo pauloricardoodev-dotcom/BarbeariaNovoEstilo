@@ -83,7 +83,7 @@ Ambas com RLS ligado sem policies + `REVOKE` de `anon`/`authenticated`. Nenhuma 
 - **E-mail:** conta no provedor escolhido (ex.: Resend/Brevo) e domínio verificado (SPF/DKIM) para não cair no spam.
 
 ## Variáveis de ambiente
-Backend: `GOOGLE_CLIENT_ID`, `FRONTEND_URL`, credenciais do provedor de e-mail, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_VERIFICACAO`, `SESSAO_CLIENTE_DURACAO_SEGUNDOS`. Frontend: `VITE_GOOGLE_CLIENT_ID`, `VITE_API_URL`. Nada de `service_role` do Supabase no frontend.
+Backend: `GOOGLE_CLIENT_ID`, `FRONTEND_URL`, credenciais do provedor de e-mail, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_VERIFICACAO`, `WHATSAPP_TEMPLATE_CANCELAMENTO_APROVADO`, `WHATSAPP_TEMPLATE_CANCELAMENTO_RECUSADO`, `WHATSAPP_TEMPLATE_REAGENDAMENTO`, `SESSAO_CLIENTE_DURACAO_SEGUNDOS`. Frontend: `VITE_GOOGLE_CLIENT_ID`, `VITE_API_URL`. Nada de `service_role` do Supabase no frontend.
 
 ## Erros
 Tratar nome/e-mail/telefone/senha inválidos, e-mail ou telefone já cadastrados, código errado/expirado/usado/tentativas esgotadas, cliente inexistente, conta não verificada tentando agendar, falha do banco ou dos provedores de e-mail/WhatsApp, acesso não autorizado. Nunca expor mensagens do banco, stack traces ou credenciais.

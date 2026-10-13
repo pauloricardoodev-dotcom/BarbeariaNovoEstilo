@@ -55,6 +55,12 @@ export function horaDeMinutos(minutos: number): string {
   return `${pad(Math.floor(minutos / 60))}:${pad(minutos % 60)}`;
 }
 
+/** 'YYYY-MM-DD' -> 'DD/MM/YYYY'. */
+export function formatarDataBR(data: string): string {
+  const [ano, mes, dia] = data.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
 /** Instante (UTC) de uma data+hora no relógio de São Paulo. */
 export function instante(data: string, hora: string): Date {
   return new Date(`${data}T${hora}:00${OFFSET_FUSO}`);

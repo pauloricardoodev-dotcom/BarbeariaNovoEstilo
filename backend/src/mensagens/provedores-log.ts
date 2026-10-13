@@ -2,6 +2,10 @@ import { Logger } from '@nestjs/common';
 import {
   EmailService,
   WhatsAppService,
+  textoAvisoCancelamento,
+  textoAvisoReagendamento,
+  type AvisoCancelamento,
+  type AvisoReagendamento,
   type EmailMensagem,
 } from './mensagens.types.js';
 
@@ -36,6 +40,30 @@ export class WhatsAppLogService extends WhatsAppService {
     this.logger.warn(
       this.mostrarConteudo
         ? `[não enviado] Para: ${telefone} | Código de verificação: ${codigo}`
+        : `[não enviado] WHATSAPP_PROVEDOR=log — configure a WhatsApp Cloud API.`,
+    );
+    return Promise.resolve();
+  }
+
+  enviarAvisoReagendamento(
+    telefone: string,
+    aviso: AvisoReagendamento,
+  ): Promise<void> {
+    this.logger.warn(
+      this.mostrarConteudo
+        ? `[não enviado] Para: ${telefone} | ${textoAvisoReagendamento(aviso)}`
+        : `[não enviado] WHATSAPP_PROVEDOR=log — configure a WhatsApp Cloud API.`,
+    );
+    return Promise.resolve();
+  }
+
+  enviarAvisoCancelamento(
+    telefone: string,
+    aviso: AvisoCancelamento,
+  ): Promise<void> {
+    this.logger.warn(
+      this.mostrarConteudo
+        ? `[não enviado] Para: ${telefone} | ${textoAvisoCancelamento(aviso)}`
         : `[não enviado] WHATSAPP_PROVEDOR=log — configure a WhatsApp Cloud API.`,
     );
     return Promise.resolve();

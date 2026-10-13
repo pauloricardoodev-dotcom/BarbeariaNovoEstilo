@@ -26,12 +26,23 @@ export const criarReservaManual = ({ nome, servicoId, duracaoMinutos, data, hora
     body: corpo({ nome, servicoId, duracaoMinutos, data, hora }),
   });
 
+/** Reagendamento feito pelo barbeiro: novo dia e hora de um agendamento ativo que ainda não começou (o cliente é avisado por WhatsApp). */
+export const reagendarAgendamento = (id, { data, hora }) =>
+  request(`/admin/agendamentos/${id}/reagendar`, { method: 'POST', body: corpo({ data, hora }) });
+
 /** status: 'concluido' | 'cancelado'. */
 export const atualizarStatusAgendamento = (id, status) =>
   request(`/admin/agendamentos/${id}`, { method: 'PATCH', body: corpo({ status }) });
 
 export const listarSolicitacoesPendentes = async () =>
   (await request('/admin/solicitacoes-cancelamento?status=pendente&porPagina=100')).itens;
+
+/** Reagendamentos feitos pelos clientes que o barbeiro ainda não viu (não precisam de aprovação). */
+export const listarReagendamentosNovos = () => request('/admin/reagendamentos/novos');
+
+export const marcarReagendamentoVisto = (id) => request(`/admin/reagendamentos/${id}/visto`, { method: 'POST' });
+
+export const marcarTodosReagendamentosVistos = () => request('/admin/reagendamentos/visto', { method: 'POST' });
 
 /** Aprovar cancela o agendamento; recusar mantém. `resposta` é opcional e o cliente a vê. */
 export const decidirSolicitacao = (id, { aprovar, resposta }) =>
