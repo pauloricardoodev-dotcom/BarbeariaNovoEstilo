@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { appointments } from '../data/mockData';
 import { MONTHS } from '../../data/constants';
+import Icone from './Icones';
 import PageHeader from './PageHeader';
 
 const DashboardTab = () => {
@@ -71,10 +72,10 @@ const DashboardTab = () => {
   })();
 
   const cards = [
-    { icon: '👥', title: 'Clientes no Mês', value: stats.totalClients, subtitle: 'Atendimentos registrados' },
-    { icon: '💰', title: 'Faturamento', value: `R$ ${stats.revenue.toFixed(2)}`, subtitle: 'Serviços concluídos' },
-    { icon: '📅', title: 'Agendamentos', value: stats.totalAppointments, subtitle: 'Total de reservas' },
-    { icon: '❌', title: 'Cancelamentos', value: stats.cancellations, subtitle: 'Reservas canceladas' },
+    { icon: 'clientes', title: 'Clientes no Mês', value: stats.totalClients, subtitle: 'Atendimentos registrados' },
+    { icon: 'faturamento', title: 'Faturamento', value: `R$ ${stats.revenue.toFixed(2)}`, subtitle: 'Serviços concluídos' },
+    { icon: 'agenda', title: 'Agendamentos', value: stats.totalAppointments, subtitle: 'Total de reservas' },
+    { icon: 'cancelamentos', title: 'Cancelamentos', value: stats.cancellations, subtitle: 'Reservas canceladas' },
   ];
 
   return (
@@ -94,7 +95,7 @@ const DashboardTab = () => {
           <div key={card.title} className="col-12 col-sm-6 col-xl-3">
             <div className="card stat-card h-100">
               <div className="card-body d-flex align-items-center gap-3">
-                <div className="stat-icon">{card.icon}</div>
+                <div className="stat-icon"><Icone nome={card.icon} size={28} /></div>
                 <div>
                   <div className="text-secondary small text-uppercase fw-semibold">{card.title}</div>
                   <div className="stat-value">{card.value}</div>

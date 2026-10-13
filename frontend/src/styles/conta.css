@@ -370,3 +370,186 @@
     width: 100%;
   }
 }
+
+/* Meus agendamentos */
+.agenda-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agenda-item {
+  border: 1px solid rgba(18, 18, 20, 0.12);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+
+.agenda-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.agenda-status {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(18, 18, 20, 0.08);
+}
+
+.agenda-status-agendado {
+  background: rgba(46, 125, 50, 0.14);
+  color: #2e7d32;
+}
+
+.agenda-status-cancelado {
+  background: rgba(198, 40, 40, 0.12);
+  color: #c62828;
+}
+
+.agenda-dados {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.agenda-dados dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.agenda-dados dd {
+  margin: 0;
+}
+
+.agenda-acoes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.agenda-aviso {
+  opacity: 0.7;
+}
+
+.agenda-reagendar {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(18, 18, 20, 0.12);
+}
+
+.agenda-reagendar h3 {
+  font-size: 18px;
+}
+
+.agenda-horarios {
+  margin-top: 12px;
+}
+
+@media (max-width: 575.98px) {
+  .agenda-acoes .btn {
+    width: 100%;
+  }
+}
+
+/* Data em que o agendamento foi feito: sutil, no canto inferior direito (como a hora de uma mensagem) */
+.agenda-criado {
+  display: block;
+  margin-top: 10px;
+  text-align: right;
+  font-size: 11px;
+  color: #9a9a9a;
+}
+
+/* Botões do header (menores que os do hero) */
+.header-btn {
+  padding: 12px 20px;
+  font-size: 12.5px;
+}
+
+/* Perfil: avatar circular padrão + "Olá, Nome" ao lado (à direita de "Agendar horário") */
+.header-perfil {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  color: var(--cream);
+  text-decoration: none;
+  min-width: 0;
+}
+
+.header-perfil-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(242, 242, 240, 0.45);
+  background: rgba(242, 242, 240, 0.08);
+  transition: border-color .2s ease, background .2s ease;
+}
+
+.header-perfil-avatar svg {
+  width: 22px;
+  height: 22px;
+}
+
+.header-perfil-nome {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-perfil:hover {
+  color: var(--gold);
+}
+
+.header-perfil:hover .header-perfil-avatar {
+  border-color: var(--gold);
+  background: rgba(242, 242, 240, 0.14);
+}
+
+/* Respiro entre logo, links e botões do header: container mais largo e espaçamentos maiores.
+   O menu completo só aparece a partir de 1200px (abaixo disso vira hambúrguer). */
+header .container.header-inner {
+  max-width: 1400px;
+  padding-left: 32px;
+  padding-right: 32px;
+  gap: 72px;
+}
+
+nav.main-nav {
+  flex: 1;
+  justify-content: center;
+  gap: 44px;
+}
+
+.header-cta {
+  flex-shrink: 0;
+  gap: 20px;
+}
+
+@media (max-width: 1399.98px) {
+  nav.main-nav {
+    gap: 32px;
+  }
+
+  header .container.header-inner {
+    gap: 44px;
+  }
+}

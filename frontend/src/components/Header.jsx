@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useSessaoCliente } from '../sessao/sessaoCliente';
 import useIrParaSecao from '../utils/useIrParaSecao';
 
@@ -14,6 +14,7 @@ const Header = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const irParaSecao = useIrParaSecao();
   const { status, cliente } = useSessaoCliente();
+  const { pathname } = useLocation();
 
   const scrollToSection = (e, sectionId) => {
     irParaSecao(e, sectionId);
@@ -23,13 +24,9 @@ const Header = () => {
   // Login obrigatório: sem sessão, links de seção e "Agendar" só levariam de volta ao login.
   const logado = status === 'logado';
 
-  // Enquanto a sessão carrega, não mostra nada (evita piscar "Entrar" para quem está logado).
-  const conta =
-    logado
-      ? { to: '/minha-conta', label: `Olá, ${cliente.nome.split(' ')[0]}` }
-      : status === 'carregando'
-        ? null
-        : { to: '/entrar', label: 'Entrar' };
+  // Link "Entrar" só para quem não está logado. Enquanto a sessão carrega, não mostra nada
+  // (evita piscar "Entrar" para quem está logado); na própria tela de login também é desnecessário.
+  const mostrarEntrar = !logado && status !== 'carregando' && pathname !== '/entrar';
 
   return (
     <header>
@@ -53,7 +50,7 @@ const Header = () => {
         </a>
 
         {logado && (
-          <nav className="main-nav d-none d-lg-flex">
+          <nav className="main-nav d-none d-xl-flex">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.id}
@@ -67,22 +64,34 @@ const Header = () => {
         )}
 
         <div className="header-cta">
-          {conta && (
-            <Link to={conta.to} className={`header-conta ${logado ? 'd-none d-lg-inline-flex' : ''}`}>
-              {conta.label}
+          {mostrarEntrar && (
+            <Link to="/entrar" className="header-conta">
+              Entrar
             </Link>
           )}
           {logado && (
             <>
               <a
                 href="/#agendamento"
-                className="btn btn-primary d-none d-lg-inline-flex"
+                className="btn btn-primary header-btn d-none d-xl-inline-flex"
                 onClick={(e) => scrollToSection(e, 'agendamento')}
               >
                 Agendar horário
               </a>
+              <Link to="/meus-agendamentos" className="btn btn-outline-cream header-btn d-none d-xl-inline-flex">
+                Meus agendamentos
+              </Link>
+              <Link to="/minha-conta" className="header-perfil d-none d-xl-flex" aria-label="Minha conta">
+                <span className="header-perfil-avatar">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="9" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M5 20c0-3.8 3.1-6 7-6s7 2.2 7 6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </span>
+                <span className="header-perfil-nome">Olá, {cliente.nome.split(' ')[0]}</span>
+              </Link>
               <button
-                className="menu-toggle d-lg-none"
+                className="menu-toggle d-xl-none"
                 aria-label="Abrir menu"
                 aria-expanded={mobileNavOpen}
                 onClick={() => setMobileNavOpen(!mobileNavOpen)}
@@ -97,7 +106,7 @@ const Header = () => {
       </div>
 
       {logado && (
-        <div className={`mobile-nav d-lg-none ${mobileNavOpen ? 'open' : ''}`}>
+        <div className={`mobile-nav d-xl-none ${mobileNavOpen ? 'open' : ''}`}>
           {NAV_LINKS.map((link) => (
             <a
               key={link.id}
@@ -107,6 +116,9 @@ const Header = () => {
               {link.label}
             </a>
           ))}
+          <Link to="/meus-agendamentos" onClick={() => setMobileNavOpen(false)}>
+            Meus agendamentos
+          </Link>
           <Link to="/minha-conta" onClick={() => setMobileNavOpen(false)}>
             Minha conta
           </Link>

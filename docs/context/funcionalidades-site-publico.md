@@ -13,7 +13,7 @@ Home (`pages/HomePage.jsx`) com âncoras: `#inicio`, `#servicos`, `#agendamento`
 - Estatísticas `HERO_STATS`: 13+ anos, 3 especialistas, 4.9 avaliação. Imagem `public/assets/hero.jpg`.
 
 ## Serviços (`Services.jsx`)
-- Cards numerados (01…) para cada item de `SERVICES`: nome, preço (`R$ 80,00`), duração.
+- Cards numerados (01…) para cada serviço ativo vindo de `GET /api/servicos` (carregado uma vez em `HomePage` via `hooks/useServicos` e repassado a `Services` e `Booking`): nome, preço (`R$ 80,00`), duração. Mostra "Carregando…", erro ou "Nenhum serviço disponível" conforme o caso. Ids são UUID.
 - Botão "Agendar" por card → `onBookService(id)` sobe para `App`, que passa `preSelectedService` ao `Booking` e rola até `#agendamento`.
 
 ## Agendamento (`Booking.jsx`) — 3 passos + confirmação
@@ -44,3 +44,6 @@ Backend: `/api/clientes/*` (ver `arquitetura.md`). Sessão em cookie httpOnly; o
 - **Login obrigatório**: a home exige sessão (`ExigeCliente`); sem sessão, o Header mostra só a marca e "Entrar".
 - Ainda não: botão "Entrar com Google" (Fase 2) e "Meus agendamentos" (Fase 6). O agendamento ainda não é gravado no backend.
 
+
+## Meus agendamentos (`/meus-agendamentos`)
+Página protegida (`ExigeCliente`), link no Header (desktop e menu mobile). Lista cada agendamento com serviço, dia/hora do atendimento, forma de pagamento (+ preço) e quando foi agendado; botão **Reagendar** (só muda data/hora, janela amanhã → 3 meses, sem domingo, desabilitado a menos de 2 h do início; botão aparece desabilitado, com aviso, se o atendimento já passou). **MOCK**: dados de `src/data/agendamentosMock.js` em estado local, sem persistência, até a Fase 5 do backend. "Solicitar cancelamento" ainda não existe.

@@ -12,6 +12,7 @@ import VerificarPage from './pages/VerificarPage';
 import EsqueciSenhaPage from './pages/EsqueciSenhaPage';
 import RedefinirSenhaPage from './pages/RedefinirSenhaPage';
 import MinhaContaPage from './pages/MinhaContaPage';
+import MeusAgendamentosPage from './pages/MeusAgendamentosPage';
 import TermosPage from './pages/TermosPage';
 import PrivacidadePage from './pages/PrivacidadePage';
 import './styles/globals.css';
@@ -55,6 +56,14 @@ function App() {
               element={
                 <ExigeCliente>
                   <MinhaContaPage />
+                </ExigeCliente>
+              }
+            />
+            <Route
+              path="meus-agendamentos"
+              element={
+                <ExigeCliente>
+                  <MeusAgendamentosPage />
                 </ExigeCliente>
               }
             />

@@ -1,12 +1,3 @@
-export const SERVICES = [
-  { id: 'corte-feminino', name: 'Corte Feminino', price: 80, duration: 60 },
-  { id: 'corte-masculino', name: 'Corte Masculino', price: 50, duration: 45 },
-  { id: 'corte-infantil', name: 'Corte Infantil', price: 40, duration: 40 },
-  { id: 'escova', name: 'Escova', price: 60, duration: 45 },
-  { id: 'hidratacao', name: 'Hidratação', price: 70, duration: 60 },
-  { id: 'coloracao', name: 'Coloração', price: 150, duration: 120 },
-];
-
 export const PROS = [
   { id: 'mariana', name: 'Mariana Silva', role: 'Cabeleireira', desc: 'Especialista em cortes', initials: 'MS' },
   { id: 'lucas', name: 'Lucas Almeida', role: 'Cabeleireiro', desc: 'Especialista em cortes masculinos', initials: 'LA' },

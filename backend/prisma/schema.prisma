@@ -86,3 +86,19 @@ model TokenCliente {
   @@index([tipo, tokenHash])
   @@map("tokens_clientes")
 }
+
+/// Catálogo de serviços. Nunca apagado: "remover" é ativo = false (agendamentos referenciam por FK).
+/// O índice único em lower(trim(nome)) vive só na migration (Prisma não modela índice de expressão).
+model Servico {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome           String
+  descricao      String?
+  preco          Decimal  @db.Decimal(10, 2)
+  duracaoMinutos Int      @map("duracao_minutos")
+  ativo          Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_servicos_updated_at.
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("servicos")
+}

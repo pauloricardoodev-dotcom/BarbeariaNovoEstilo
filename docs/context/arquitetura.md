@@ -26,7 +26,7 @@ api/http.js             fetch para /api + ApiError (usado pelo site e pelo admin
 api/clientes.js         chamadas de /api/clientes/*
 sessao/                 contexto da sessão do cliente (useSessaoCliente, destinoSeguro, destinoAposLogin)
 utils/                  telefone.js (máscara de exibição), useIrParaSecao.js
-data/constants.js       SERVICES, PROS, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS, HERO_STATS
+data/constants.js       PROS, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS, HERO_STATS
 styles/globals.css      CSS do site público
 styles/conta.css        CSS das telas de conta (reaproveita .field/.btn)
 admin/
@@ -39,7 +39,7 @@ frontend/public/assets/ hero.jpg, LogoNE.jpeg ; public/favicon.svg, icons.svg
 ```
 
 ## Dados
-- **Site público**: `data/constants.js`. Serviços com `id` string (`corte-masculino`), `price`, `duration`.
+- **Site público**: serviços vêm da API (`api/servicos.js`, `hooks/useServicos.js`; ids UUID, formato `{id,name,description,price,duration}`). O resto do conteúdo fixo segue em `data/constants.js`.
 - **Admin**: `admin/data/mockData.js`. Serviços/profissionais com `id` numérico, `status`, `description`. Agendamento:
   `{ id, date:'DD/MM/YYYY', time:'HH:MM', client:{name,phone,initials}, service:{name,price}, professional:{name,role}, status }`.
 - Os dois conjuntos de dados são **independentes** (nomes coincidem, ids/formatos não). Nada é persistido; `localStorage` não é usado.

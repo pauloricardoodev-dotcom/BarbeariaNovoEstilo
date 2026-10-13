@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
-import { SERVICES, WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
+import { WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
 import ConfirmDialog from './ConfirmDialog';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone } from '../utils/telefone';
@@ -22,7 +22,7 @@ const MASCARAS_CARTAO = {
 
 // Passos: 1 Serviço · 2 Data e horário · 3 Pagamento · 4 Confirmação.
 // Os dados do cliente vêm do perfil (login obrigatório), sem etapa de identificação.
-const Booking = ({ preSelectedService }) => {
+const Booking = ({ servicos, preSelectedService }) => {
   const { cliente } = useSessaoCliente();
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
@@ -44,12 +44,12 @@ const Booking = ({ preSelectedService }) => {
   // Handle pre-selected service from other components
   useEffect(() => {
     if (preSelectedService) {
-      const foundService = SERVICES.find(s => s.id === preSelectedService);
+      const foundService = servicos.find(s => s.id === preSelectedService);
       if (foundService) {
         setService(foundService);
       }
     }
-  }, [preSelectedService]);
+  }, [preSelectedService, servicos]);
 
   const formatPrice = (price) => {
     return 'R$ ' + price.toFixed(2).replace('.', ',');
@@ -200,7 +200,7 @@ const Booking = ({ preSelectedService }) => {
         <h3>O que você deseja fazer?</h3>
         <p className="step-sub">Escolha o serviço para este agendamento.</p>
         <div className="row g-3">
-          {SERVICES.map(s => (
+          {servicos.map(s => (
             <div className="col-12 col-md-6" key={s.id}>
               <div
                 className={`pick-card ${service && service.id === s.id ? 'selected' : ''}`}

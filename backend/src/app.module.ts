@@ -9,6 +9,7 @@ import { ClientesModule } from './clientes/clientes.module.js';
 import { validarEnv } from './config/env.validation.js';
 import { MensagensModule } from './mensagens/mensagens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ServicosModule } from './servicos/servicos.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     AuthModule,
     MensagensModule,
     ClientesModule,
+    ServicosModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

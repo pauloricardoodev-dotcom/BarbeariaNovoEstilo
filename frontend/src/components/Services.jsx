@@ -1,6 +1,5 @@
-import { SERVICES } from '../data/constants';
 
-const Services = ({ onBookService }) => {
+const Services = ({ servicos, carregando, erro, onBookService }) => {
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -20,8 +19,13 @@ const Services = ({ onBookService }) => {
           <h2>Nossos serviços</h2>
           <p>Cada atendimento é pensado com técnica e cuidado, do primeiro corte à finalização.</p>
         </div>
+        {carregando && <p className="text-center">Carregando serviços…</p>}
+        {!carregando && erro && <p className="text-center">{erro}</p>}
+        {!carregando && !erro && servicos.length === 0 && (
+          <p className="text-center">Nenhum serviço disponível no momento.</p>
+        )}
         <div className="services-grid">
-          {SERVICES.map((service, index) => (
+          {servicos.map((service, index) => (
             <div key={service.id} className="service-card">
               <span className="num">0{index + 1}</span>
               <h3>{service.name}</h3>

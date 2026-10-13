@@ -4,10 +4,12 @@ import Hero from '../components/Hero';
 import Services from '../components/Services';
 import Booking from '../components/Booking';
 import About from '../components/About';
+import useServicos from '../hooks/useServicos';
 
 function HomePage() {
   const [preSelectedService, setPreSelectedService] = useState(null);
   const { hash } = useLocation();
+  const { servicos, carregando, erro } = useServicos();
 
   // Vindo de outra página por um link "/#secao" (Header/Footer), rola até a seção.
   useEffect(() => {
@@ -17,8 +19,8 @@ function HomePage() {
   return (
     <>
       <Hero />
-      <Services onBookService={setPreSelectedService} />
-      <Booking preSelectedService={preSelectedService} />
+      <Services servicos={servicos} carregando={carregando} erro={erro} onBookService={setPreSelectedService} />
+      <Booking servicos={servicos} preSelectedService={preSelectedService} />
       <About />
     </>
   );

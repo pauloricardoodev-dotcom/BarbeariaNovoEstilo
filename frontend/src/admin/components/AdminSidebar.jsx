@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router';
+import Icone from './Icones';
 
 const NAV_ITEMS = [
-  { path: '/admin/agenda', icon: '📅', label: 'Agenda' },
-  { path: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
-  { path: '/admin/servicos', icon: '💇', label: 'Serviços' },
-  { path: '/admin/profissionais', icon: '👥', label: 'Profissionais' },
-  { path: '/admin/configuracoes', icon: '⚙️', label: 'Configurações' },
+  { path: '/admin/agenda', icon: 'agenda', label: 'Agenda' },
+  { path: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { path: '/admin/servicos', icon: 'servicos', label: 'Serviços' },
+  { path: '/admin/configuracoes', icon: 'configuracoes', label: 'Configurações' },
 ];
 
 const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
@@ -25,14 +25,17 @@ const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
             </div>
           )}
         </div>
-        <button
-          type="button"
-          className="btn btn-sm btn-light sidebar-toggle"
-          onClick={onToggle}
-          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        >
-          {collapsed ? '→' : '←'}
-        </button>
+        {/* Só existe no celular: no computador a sidebar é fixa. */}
+        {onToggle && (
+          <button
+            type="button"
+            className="btn btn-sm btn-light sidebar-toggle"
+            onClick={onToggle}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {collapsed ? '→' : '←'}
+          </button>
+        )}
       </div>
 
       <nav className="flex-grow-1 py-3 overflow-y-auto">
@@ -46,7 +49,7 @@ const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
                 }
                 title={item.label}
               >
-                <span className="fs-5">{item.icon}</span>
+                <Icone nome={item.icon} />
                 {!collapsed && <span className="text-truncate">{item.label}</span>}
               </NavLink>
             </li>
@@ -55,9 +58,17 @@ const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
       </nav>
 
       <div className="sidebar-footer p-3">
-        {user && !collapsed && (
-          <div className="sidebar-user mb-2 text-truncate" title={user.email}>
-            {user.nome}
+        {user && (
+          <div className="sidebar-user" title={`${user.nome} · ${user.email}`}>
+            <span className="sidebar-user-avatar">
+              <Icone nome="perfil" size={20} />
+            </span>
+            {!collapsed && (
+              <span className="sidebar-user-info">
+                <b>{user.nome}</b>
+                <small>{user.email}</small>
+              </span>
+            )}
           </div>
         )}
         <button
@@ -66,7 +77,7 @@ const AdminSidebar = ({ collapsed, onToggle, user, onLogout }) => {
           onClick={handleLogout}
           title="Sair"
         >
-          <span>🚪</span>
+          <Icone nome="sair" size={18} />
           {!collapsed && <span>Sair</span>}
         </button>
       </div>

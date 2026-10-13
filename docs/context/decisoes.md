@@ -14,7 +14,7 @@ Fonte da verdade. Onde conflitar com outros arquivos de `docs/context/`, vale es
   - Detalhes: [spec-clientes-e-contas.md](spec-clientes-e-contas.md).
 - **Reserva manual (só o admin):** o barbeiro registra quem liga/chega sem conta informando **apenas nome, serviço (tipo de corte) e duração** que vai usar. Sem telefone/e-mail e sem criar cliente/conta.
 - **Cliente não cancela, só reagenda** (decidido em 2026-10-11):
-  - **Reagendar:** mover o próprio agendamento para outro horário disponível; permitido só **até 2 horas antes** do início atual. Depois disso, o cliente não reagenda. **Sem limite de vezes. Só muda o horário** (serviço não muda).
+  - **Reagendar:** mover o próprio agendamento para outro horário disponível; permitido só **até 2 horas antes** do início atual. Depois disso, o cliente não reagenda. **Atendimento retroativo (que já passou) nunca é reagendado, nem para uma data passada ou para hoje: o novo horário é sempre de amanhã em diante, só em horários livres.** **Sem limite de vezes. Só muda o horário** (serviço não muda).
   - **Solicitar cancelamento:** o cliente pede **a qualquer momento** (sem o limite de 2 h), com **motivo em texto obrigatório**; o barbeiro aprova ou recusa. Enquanto pendente, o horário continua reservado.
 - **Janela de agendamento** (vale para agendar e para o novo horário de um reagendamento): a partir do **dia seguinte** (dia de calendário em `America/Sao_Paulo`, não 24 h corridas — às 20h de hoje já vale amanhã 08:00) até no máximo **3 meses** à frente, sempre só horários livres.
   - **Só o admin cancela** de fato (diretamente ou aprovando uma solicitação). Cancelado nunca é apagado.

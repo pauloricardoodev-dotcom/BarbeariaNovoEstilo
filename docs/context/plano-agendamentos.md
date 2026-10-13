@@ -27,8 +27,8 @@ Regras de clientes/contas: [spec-clientes-e-contas.md](spec-clientes-e-contas.md
 - [x] Contexto de sessão do cliente; "Minha conta" (editar perfil); Header com Entrar / Minha conta.
 
 ## Fase 4 — Serviços
-- [ ] Tabela `servicos` (nome, preço, duração, status) + `GET /servicos` público; CRUD admin protegido.
-- [ ] Site e admin leem do banco (resolve ids string × numérico).
+- [x] Tabela `servicos` (nome, descrição, preço, duração, ativo) + `GET /servicos` público (só ativos); `GET/POST /admin/servicos` e `PATCH /admin/servicos/:id` (sem DELETE: "remover" = inativar). Migrations `20261013120000_servicos` e `20261013130000_servicos_iniciais` (6 serviços placeholder, idempotente) **preparadas, ainda não aplicadas no Supabase**.
+- [x] Site e aba Serviços do admin leem do banco. (A `AgendaTab` troca o mock na Fase 6.)
 
 ## Fase 5 — Agendamentos (backend)
 - [ ] Tabela `agendamentos`:

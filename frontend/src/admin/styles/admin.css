@@ -290,6 +290,7 @@
 /* ===== AGENDA ===== */
 .calendar-card {
   border-top: 3px solid var(--navy);
+  max-width: 760px;
 }
 
 .calendar-grid {
@@ -299,12 +300,12 @@
 }
 
 .calendar-weekday {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.05em;
 }
 
 .calendar-day {
-  aspect-ratio: 1;
+  aspect-ratio: 1.3;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -338,11 +339,13 @@
 }
 
 .day-number {
+  font-size: 1.375rem;
+  line-height: 1.1;
   font-weight: 600;
 }
 
 .appointment-count {
-  font-size: 0.625rem;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 
@@ -379,7 +382,19 @@
   }
 
   .calendar-weekday {
-    font-size: 0.5625rem;
+    font-size: 0.6875rem;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1;
+  }
+
+  .day-number {
+    font-size: 1.0625rem;
+  }
+
+  .appointment-count {
+    font-size: 0.6875rem;
   }
 }
 
@@ -399,6 +414,52 @@
 }
 
 .sidebar-user {
-  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+.admin-sidebar.collapsed .sidebar-user {
+  justify-content: center;
+}
+
+.sidebar-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--wine), var(--wine-2));
+  border: 1.5px solid var(--gold);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.sidebar-user-info b {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cream);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-info small {
+  font-size: 0.75rem;
   color: var(--gold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
