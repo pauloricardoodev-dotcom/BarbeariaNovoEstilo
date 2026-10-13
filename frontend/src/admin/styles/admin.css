@@ -295,7 +295,8 @@
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr): sem isso as colunas não encolhem abaixo do conteúdo e o calendário estoura o cartão */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -305,6 +306,7 @@
 }
 
 .calendar-day {
+  min-width: 0;
   aspect-ratio: 1.3;
   display: flex;
   flex-direction: column;
@@ -462,4 +464,68 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Agenda do dia: linha clicável + botão "Feito"; concluído fica riscado */
+.agenda-linha-principal {
+  flex: 1 1 15rem;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.agenda-feito .agenda-texto,
+.agenda-feito .time-slot {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.agenda-feito .agenda-linha-principal,
+.agenda-cancelado .agenda-linha-principal {
+  opacity: 0.55;
+}
+
+/* Selos de forma de pagamento (Agenda do dia) */
+.badge-pgto-pix {
+  background-color: #0d6efd;
+  color: #fff;
+}
+
+.badge-pgto-credito {
+  background-color: #6f42c1;
+  color: #fff;
+}
+
+.badge-pgto-dinheiro {
+  background-color: #198754;
+  color: #fff;
+}
+
+/* Agenda do dia em telas estreitas: o botão desce para a linha de baixo e o texto não estoura */
+.agenda-nome {
+  overflow-wrap: anywhere;
+}
+
+.agenda-concluir {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767.98px) {
+  .agenda-linha .agenda-concluir {
+    flex: 1 1 100%;
+  }
+}
+
+.agenda-linha-principal > div {
+  min-width: 0;
+}
+
+/* Selos longos (ex.: "Cancelamento solicitado") quebram de linha em telas muito estreitas */
+.agenda-linha .badge {
+  white-space: normal;
+  text-align: left;
 }

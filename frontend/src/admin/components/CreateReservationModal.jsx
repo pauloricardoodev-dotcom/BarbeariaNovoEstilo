@@ -1,210 +1,145 @@
-import { useState } from 'react';
-import { TIMES_MANHA, TIMES_TARDE } from '../../data/constants';
+import { useEffect, useState } from 'react';
+import { criarReservaManual } from '../api/agendamentos';
+import { listarServicos } from '../api/servicos';
+import { paraChave } from '../../utils/datas';
 import AdminModal from './AdminModal';
 
-const CreateReservationModal = ({ onClose, onSubmit, professionals, services, appointments }) => {
-  const [formData, setFormData] = useState({
-    clientName: '',
-    clientPhone: '',
-    service: services[0],
-    professional: professionals[0],
-    date: '',
-    time: ''
-  });
-  const [showExtraTime, setShowExtraTime] = useState(false);
-  const [extraTime, setExtraTime] = useState('');
-  const [error, setError] = useState('');
+/**
+ * Reserva manual (quem liga ou chega sem conta): só nome, serviço, duração, dia e hora.
+ * Sem telefone/e-mail e sem criar cliente. O servidor confere expediente e conflito de horário.
+ */
+const CreateReservationModal = ({ onClose, onCreated, dataInicial }) => {
+  const [servicos, setServicos] = useState([]);
+  const [nome, setNome] = useState('');
+  const [servicoId, setServicoId] = useState('');
+  const [duracao, setDuracao] = useState('');
+  const [data, setData] = useState(dataInicial ?? '');
+  const [hora, setHora] = useState('');
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
-  const availableTimes = [...TIMES_MANHA, ...TIMES_TARDE];
-
-  const getAvailableSlots = (date) => {
-    if (!date) return availableTimes;
-
-    // Convert date from YYYY-MM-DD to DD/MM/YYYY
-    const formattedDate = date.split('-').reverse().join('/');
-
-    const occupiedTimes = appointments
-      .filter(apt => apt.date === formattedDate && apt.status !== 'cancelado')
-      .map(apt => apt.time);
-
-    return availableTimes.filter(time => !occupiedTimes.includes(time));
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    setError('');
-  };
-
-  const handleSubmit = () => {
-    if (!formData.clientName || !formData.clientPhone || !formData.date || !formData.time) {
-      setError('Preencha todos os campos obrigatórios.');
-      return;
-    }
-
-    // Convert date from YYYY-MM-DD to DD/MM/YYYY
-    const formattedDate = formData.date.split('-').reverse().join('/');
-
-    const newAppointment = {
-      id: Date.now(),
-      date: formattedDate,
-      time: formData.time,
-      client: {
-        name: formData.clientName,
-        phone: formData.clientPhone,
-        initials: formData.clientName.split(' ').map(n => n[0]).join('').toUpperCase()
-      },
-      service: formData.service,
-      professional: formData.professional,
-      status: 'agendado'
+  useEffect(() => {
+    let cancelado = false;
+    listarServicos()
+      .then((lista) => !cancelado && setServicos(lista.filter((s) => s.status === 'ativo')))
+      .catch((err) => !cancelado && setErro(err.message));
+    return () => {
+      cancelado = true;
     };
+  }, []);
 
-    onSubmit(newAppointment);
+  // Ao escolher o serviço, sugere a duração dele (o barbeiro pode ajustar para esta reserva).
+  const handleServico = (id) => {
+    setServicoId(id);
+    const servico = servicos.find((s) => s.id === id);
+    if (servico) setDuracao(String(servico.duration));
   };
 
-  const handleAddExtraTime = () => {
-    if (!extraTime) {
-      setError('Informe um horário válido.');
-      return;
+  const pronto = nome.trim() && servicoId && Number(duracao) >= 5 && data && hora;
+
+  const handleSubmit = async () => {
+    setErro('');
+    setSalvando(true);
+    try {
+      await criarReservaManual({
+        nome: nome.trim(),
+        servicoId,
+        duracaoMinutos: Number(duracao),
+        data,
+        hora,
+      });
+      onCreated('Reserva criada.');
+    } catch (err) {
+      setErro(err.message);
+      setSalvando(false);
     }
-
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(extraTime)) {
-      setError('Formato de horário inválido. Use HH:MM');
-      return;
-    }
-
-    // Convert date from YYYY-MM-DD to DD/MM/YYYY
-    const formattedDate = formData.date.split('-').reverse().join('/');
-
-    // Check if this time is already occupied
-    const conflict = appointments.find(
-      apt => apt.date === formattedDate &&
-             apt.time === extraTime &&
-             apt.status !== 'cancelado'
-    );
-
-    if (conflict) {
-      setError('Este horário já está ocupado.');
-      return;
-    }
-
-    setFormData({ ...formData, time: extraTime });
-    setShowExtraTime(false);
-    setExtraTime('');
-    setError('');
   };
-
-  const availableSlots = getAvailableSlots(formData.date);
 
   return (
     <AdminModal
-      title="Nova reserva"
+      title="Criar Reserva Manual"
       onClose={onClose}
       footer={
         <>
-          <button className="btn btn-outline-secondary" onClick={onClose}>← Voltar</button>
-          <button className="btn btn-primary" onClick={handleSubmit}>Criar Reserva</button>
+          <button className="btn btn-outline-secondary" onClick={onClose} disabled={salvando}>
+            ← Voltar
+          </button>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={!pronto || salvando}>
+            {salvando ? 'Salvando…' : 'Salvar Reserva'}
+          </button>
         </>
       }
     >
-      {error && <div className="alert alert-danger py-2">{error}</div>}
-
-      <div className="section-label">Cliente</div>
-      <div className="row g-3 mb-4">
-        <div className="col-12">
-          <label className="form-label">Nome completo *</label>
-          <input
-            type="text"
-            className="form-control"
-            value={formData.clientName}
-            onChange={(e) => handleInputChange('clientName', e.target.value)}
-            placeholder="Nome do cliente"
-          />
-        </div>
-        <div className="col-12">
-          <label className="form-label">Telefone *</label>
-          <input
-            type="text"
-            className="form-control"
-            value={formData.clientPhone}
-            onChange={(e) => handleInputChange('clientPhone', e.target.value)}
-            placeholder="(44) 99999-9999"
-          />
-        </div>
-      </div>
-
-      <div className="section-label">Serviço</div>
-      <div className="row g-2 mb-4">
-        {services.map(service => (
-          <div key={service.id} className="col-6">
-            <button
-              type="button"
-              className={`btn w-100 text-start ${formData.service.id === service.id ? 'btn-primary' : 'btn-outline-secondary'}`}
-              onClick={() => handleInputChange('service', service)}
-            >
-              <div className="fw-semibold">{service.name}</div>
-              <div className="small">R$ {service.price}</div>
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <div className="section-label">Profissional</div>
-      <select
-        className="form-select mb-4"
-        value={formData.professional.id}
-        onChange={(e) => {
-          const professional = professionals.find(p => p.id === parseInt(e.target.value));
-          handleInputChange('professional', professional);
-        }}
-      >
-        {professionals.map(pro => (
-          <option key={pro.id} value={pro.id}>
-            {pro.name} — {pro.role}
-          </option>
-        ))}
-      </select>
-
-      <div className="section-label">Data</div>
-      <input
-        type="date"
-        className="form-control mb-4"
-        value={formData.date}
-        onChange={(e) => handleInputChange('date', e.target.value)}
-      />
-
-      <div className="section-label">Horário</div>
-      {!showExtraTime ? (
-        <>
-          <div className="d-flex flex-wrap gap-2 mb-3">
-            {availableSlots.map(time => (
-              <button
-                type="button"
-                key={time}
-                className={`btn btn-sm ${formData.time === time ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => handleInputChange('time', time)}
-              >
-                {time}
-              </button>
-            ))}
-          </div>
-          <button type="button" className="btn btn-link btn-sm p-0" onClick={() => setShowExtraTime(true)}>
-            + Adicionar horário extra
-          </button>
-        </>
-      ) : (
-        <div className="input-group">
-          <input
-            type="text"
-            className="form-control"
-            value={extraTime}
-            onChange={(e) => setExtraTime(e.target.value)}
-            placeholder="HH:MM (ex: 18:30)"
-          />
-          <button className="btn btn-primary" onClick={handleAddExtraTime}>Adicionar</button>
-          <button className="btn btn-outline-secondary" onClick={() => setShowExtraTime(false)}>Cancelar</button>
+      {erro && (
+        <div className="alert alert-danger" role="alert">
+          {erro}
         </div>
       )}
+      <div className="row g-3">
+        <div className="col-12">
+          <label className="form-label" htmlFor="reserva-nome">Nome *</label>
+          <input
+            id="reserva-nome"
+            type="text"
+            className="form-control"
+            maxLength={120}
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Nome de quem vai ser atendido"
+          />
+        </div>
+        <div className="col-md-8">
+          <label className="form-label" htmlFor="reserva-servico">Serviço *</label>
+          <select id="reserva-servico" className="form-select" value={servicoId} onChange={(e) => handleServico(e.target.value)}>
+            <option value="">Selecione…</option>
+            {servicos.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-md-4">
+          <label className="form-label" htmlFor="reserva-duracao">Duração (min) *</label>
+          <input
+            id="reserva-duracao"
+            type="number"
+            className="form-control"
+            min={5}
+            max={480}
+            value={duracao}
+            onChange={(e) => setDuracao(e.target.value)}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label" htmlFor="reserva-data">Dia *</label>
+          <input
+            id="reserva-data"
+            type="date"
+            className="form-control"
+            min={paraChave(new Date())}
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+          />
+        </div>
+        <div className="col-md-6">
+          <label className="form-label" htmlFor="reserva-hora">Horário *</label>
+          <input
+            id="reserva-hora"
+            type="time"
+            className="form-control"
+            min="08:00"
+            max="18:00"
+            step={300}
+            value={hora}
+            onChange={(e) => setHora(e.target.value)}
+          />
+        </div>
+      </div>
+      <p className="small text-secondary mt-3 mb-0">
+        Funcionamento: segunda a sábado, das 08:00 às 18:00. O atendimento precisa terminar até as 18:00 e não pode
+        coincidir com outro horário já marcado.
+      </p>
     </AdminModal>
   );
 };

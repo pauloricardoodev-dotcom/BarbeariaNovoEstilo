@@ -1,8 +1,10 @@
-import { useState } from 'react';
 import { MONTHS, WEEKDAYS } from '../../data/constants';
 
-const Calendar = ({ onDateSelect, appointments }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+// O mês exibido é controlado pela Agenda (`mes` = { y, m }), que busca os agendamentos dele na API
+// e preserva o mês ao voltar da visão do dia.
+const Calendar = ({ onDateSelect, appointments, mes, onMonthChange }) => {
+  const currentDate = new Date(mes.y, mes.m, 1);
+  const setCurrentDate = (d) => onMonthChange({ y: d.getFullYear(), m: d.getMonth() });
 
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -13,8 +15,8 @@ const Calendar = ({ onDateSelect, appointments }) => {
   };
 
   const getAppointmentsForDayByMonth = (day, month, year) => {
-    const dateStr = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
-    return appointments.filter(apt => apt.date === dateStr && apt.status !== 'cancelado');
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return appointments.filter(apt => apt.data === dateStr && apt.status !== 'cancelado');
   };
 
   const getDayOccupancyLevel = (day) => {
@@ -37,7 +39,7 @@ const Calendar = ({ onDateSelect, appointments }) => {
   };
 
   const handleDayClick = (day) => {
-    const dateStr = `${String(day).padStart(2, '0')}/${String(currentDate.getMonth() + 1).padStart(2, '0')}/${currentDate.getFullYear()}`;
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     onDateSelect(dateStr);
   };
 

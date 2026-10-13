@@ -553,3 +553,37 @@ nav.main-nav {
     gap: 44px;
   }
 }
+
+/* Meus agendamentos: pedido de cancelamento e campo de motivo */
+.agenda-pedido {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(18, 18, 20, 0.06);
+}
+
+.agenda-periodo {
+  margin: 14px 0 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.field textarea.agenda-motivo {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  font-size: 15px;
+  font-family: var(--sans);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.field textarea.agenda-motivo:focus {
+  outline: none;
+  border-color: var(--wine);
+}

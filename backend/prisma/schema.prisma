@@ -20,16 +20,18 @@ enum PapelAdmin {
 
 /// Usuários com acesso ao painel admin: o dono (ADMIN) e o desenvolvedor para suporte (SUPPORT).
 model UsuarioAdmin {
-  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nome      String
+  id                     String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                   String
   /// Sempre minúsculo (garantido por CHECK no banco).
-  email     String     @unique
-  senhaHash String     @map("senha_hash")
-  papel     PapelAdmin @default(ADMIN)
-  ativo     Boolean    @default(true)
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  email                  String                    @unique
+  senhaHash              String                    @map("senha_hash")
+  papel                  PapelAdmin                @default(ADMIN)
+  ativo                  Boolean                   @default(true)
+  createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   /// Atualizado pelo trigger trg_usuarios_admin_updated_at.
-  updatedAt DateTime   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt              DateTime                  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  agendamentosCancelados Agendamento[]
+  solicitacoesDecididas  SolicitacaoCancelamento[]
 
   @@map("usuarios_admin")
 }
@@ -57,6 +59,7 @@ model Cliente {
   /// Atualizado pelo trigger trg_clientes_updated_at.
   updatedAt            DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
   tokens               TokenCliente[]
+  agendamentos         Agendamento[]
 
   @@map("clientes")
 }
@@ -90,15 +93,106 @@ model TokenCliente {
 /// Catálogo de serviços. Nunca apagado: "remover" é ativo = false (agendamentos referenciam por FK).
 /// O índice único em lower(trim(nome)) vive só na migration (Prisma não modela índice de expressão).
 model Servico {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   nome           String
   descricao      String?
-  preco          Decimal  @db.Decimal(10, 2)
-  duracaoMinutos Int      @map("duracao_minutos")
-  ativo          Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  preco          Decimal       @db.Decimal(10, 2)
+  duracaoMinutos Int           @map("duracao_minutos")
+  ativo          Boolean       @default(true)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   /// Atualizado pelo trigger trg_servicos_updated_at.
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  agendamentos   Agendamento[]
 
   @@map("servicos")
+}
+
+enum StatusAgendamento {
+  agendado
+  concluido
+  cancelado
+
+  @@map("status_agendamento")
+}
+
+enum FormaPagamento {
+  pix
+  cartao
+  presencial
+
+  @@map("forma_pagamento")
+}
+
+enum StatusSolicitacaoCancelamento {
+  pendente
+  aprovada
+  recusada
+
+  @@map("status_solicitacao_cancelamento")
+}
+
+/// Agendamento do site (clienteId) ou reserva manual do admin (nomeAvulso) — exatamente um (CHECK).
+/// A garantia contra dupla reserva é o EXCLUDE agendamentos_sem_sobreposicao (só na migration; Prisma não modela).
+model Agendamento {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId      String?           @map("cliente_id") @db.Uuid
+  nomeAvulso     String?           @map("nome_avulso")
+  servicoId      String            @map("servico_id") @db.Uuid
+  inicio         DateTime          @db.Timestamptz(6)
+  /// Calculado pelo trigger (inicio + duração); o valor enviado na escrita é sobrescrito.
+  fim            DateTime          @default(now()) @db.Timestamptz(6)
+  duracaoMinutos Int               @map("duracao_minutos")
+  preco          Decimal           @db.Decimal(10, 2)
+  pagamento      FormaPagamento    @default(presencial)
+  status         StatusAgendamento @default(agendado)
+  canceladoEm    DateTime?         @map("cancelado_em") @db.Timestamptz(6)
+  canceladoPor   String?           @map("cancelado_por") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_agendamentos_updated_at.
+  updatedAt      DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  cliente        Cliente?                  @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  servico        Servico                   @relation(fields: [servicoId], references: [id], onDelete: Restrict)
+  cancelador     UsuarioAdmin?             @relation(fields: [canceladoPor], references: [id], onDelete: Restrict)
+  reagendamentos Reagendamento[]
+  solicitacoes   SolicitacaoCancelamento[]
+
+  @@index([inicio])
+  @@index([clienteId, inicio])
+  @@index([servicoId])
+  @@map("agendamentos")
+}
+
+/// Histórico de reagendamentos (um registro por mudança de horário).
+model Reagendamento {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agendamentoId  String      @map("agendamento_id") @db.Uuid
+  inicioAnterior DateTime    @map("inicio_anterior") @db.Timestamptz(6)
+  inicioNovo     DateTime    @map("inicio_novo") @db.Timestamptz(6)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  agendamento    Agendamento @relation(fields: [agendamentoId], references: [id], onDelete: Restrict)
+
+  @@index([agendamentoId, createdAt])
+  @@map("reagendamentos")
+}
+
+/// O cliente pede o cancelamento (motivo obrigatório); o admin aprova ou recusa.
+/// No máximo uma pendente por agendamento (índice único parcial na migration).
+model SolicitacaoCancelamento {
+  id            String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agendamentoId String                        @map("agendamento_id") @db.Uuid
+  motivo        String
+  status        StatusSolicitacaoCancelamento @default(pendente)
+  resposta      String?
+  decididoEm    DateTime?                     @map("decidido_em") @db.Timestamptz(6)
+  decididoPor   String?                       @map("decidido_por") @db.Uuid
+  createdAt     DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_solicitacoes_cancelamento_updated_at.
+  updatedAt     DateTime                      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  agendamento   Agendamento                   @relation(fields: [agendamentoId], references: [id], onDelete: Restrict)
+  decisor       UsuarioAdmin?                 @relation(fields: [decididoPor], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([agendamentoId])
+  @@map("solicitacoes_cancelamento")
 }

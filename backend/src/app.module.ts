@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AgendamentosModule } from './agendamentos/agendamentos.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ClientesModule } from './clientes/clientes.module.js';
 import { validarEnv } from './config/env.validation.js';
@@ -21,6 +22,7 @@ import { ServicosModule } from './servicos/servicos.module.js';
     MensagensModule,
     ClientesModule,
     ServicosModule,
+    AgendamentosModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

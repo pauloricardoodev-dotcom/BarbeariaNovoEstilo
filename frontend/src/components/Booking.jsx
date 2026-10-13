@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
-import { WEEKDAYS, MONTHS, TIMES_MANHA, TIMES_TARDE, STEP_LABELS } from '../data/constants';
+import { WEEKDAYS, MONTHS, STEP_LABELS } from '../data/constants';
+import { consultarDisponibilidade, criarAgendamento } from '../api/agendamentos';
+import { diaAgendavel, janelaDeAgendamento, separarPeriodos } from '../utils/datas';
 import ConfirmDialog from './ConfirmDialog';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone } from '../utils/telefone';
@@ -26,12 +28,22 @@ const Booking = ({ servicos, preSelectedService }) => {
   const { cliente } = useSessaoCliente();
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
-  const [viewMonth, setViewMonth] = useState(() => {
-    const t = new Date();
-    return { y: t.getFullYear(), m: t.getMonth() };
-  });
+  // Agenda-se a partir de hoje (com 2 h de antecedência) e em até 3 meses; o servidor confere a mesma regra.
+  const janela = janelaDeAgendamento();
+  const mesInicial = () => {
+    const [y, m] = janela.min.split('-').map(Number);
+    return { y, m: m - 1 };
+  };
+  const [viewMonth, setViewMonth] = useState(mesInicial);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
+  // Horários livres do dia escolhido, vindos de GET /api/disponibilidade.
+  const [horarios, setHorarios] = useState([]);
+  const [carregandoHorarios, setCarregandoHorarios] = useState(false);
+  const [erroHorarios, setErroHorarios] = useState('');
+  const consultaAtual = useRef(0);
+  const [enviando, setEnviando] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState('');
   const [payMethod, setPayMethod] = useState('pix');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -55,17 +67,38 @@ const Booking = ({ servicos, preSelectedService }) => {
     return 'R$ ' + price.toFixed(2).replace('.', ',');
   };
 
-  const isClosed = (d) => {
-    return d.getDay() === 0;
+  // Busca os horários livres (descartando respostas de consultas antigas, se o cliente clicar rápido).
+  const carregarHorarios = async (data, servico) => {
+    const consulta = ++consultaAtual.current;
+    setHorarios([]);
+    setErroHorarios('');
+    setCarregandoHorarios(true);
+    try {
+      const resposta = await consultarDisponibilidade({ data, servicoId: servico.id });
+      if (consulta === consultaAtual.current) setHorarios(resposta.horarios);
+    } catch (err) {
+      if (consulta === consultaAtual.current) setErroHorarios(err.message);
+    } finally {
+      if (consulta === consultaAtual.current) setCarregandoHorarios(false);
+    }
   };
 
-  const slotUnavailable = (dateStr, time) => {
-    let h = 0;
-    const str = dateStr + time;
-    for (let i = 0; i < str.length; i++) {
-      h = (h * 31 + str.charCodeAt(i)) % 97;
+  const escolherData = (data) => {
+    setSelectedDate(data);
+    setSelectedTime(null);
+    setErroEnvio('');
+    carregarHorarios(data, service);
+  };
+
+  // A disponibilidade depende da duração do serviço: trocar de serviço zera data e horário.
+  const escolherServico = (s) => {
+    if (service && service.id !== s.id) {
+      consultaAtual.current++;
+      setSelectedDate(null);
+      setSelectedTime(null);
+      setHorarios([]);
     }
-    return h % 5 === 0;
+    setService(s);
   };
 
   const formatSelectedDateLong = () => {
@@ -130,13 +163,16 @@ const Booking = ({ servicos, preSelectedService }) => {
   };
 
   const resetFlow = () => {
+    consultaAtual.current++;
     setStep(1);
     setService(null);
-    setViewMonth({ y: new Date().getFullYear(), m: new Date().getMonth() });
+    setViewMonth(mesInicial());
     setSelectedDate(null);
     setSelectedTime(null);
+    setHorarios([]);
     setPayMethod('pix');
     setAvisoVerificacao(false);
+    setErroEnvio('');
     document.getElementById('inicio').scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -161,7 +197,38 @@ const Booking = ({ servicos, preSelectedService }) => {
   const concluirPagamentoCartao = () => {
     setDialogoCartao(null);
     setCartao(CARTAO_VAZIO); // não mantém número/CVV na memória da página
-    setStep(4);
+    confirmarAgendamento('cartao');
+  };
+
+  // Grava o agendamento no servidor (que confere janela, 2 h, expediente e disponibilidade).
+  // Pix e cartão ainda são demonstração: só a forma de pagamento escolhida é registrada.
+  const confirmarAgendamento = async (pagamento) => {
+    if (enviando) return;
+    setErroEnvio('');
+    setEnviando(true);
+    try {
+      await criarAgendamento({
+        servicoId: service.id,
+        data: selectedDate,
+        hora: selectedTime,
+        pagamento,
+      });
+      setStep(4);
+    } catch (err) {
+      if (err.status === 401) {
+        setErroEnvio('Sua sessão expirou. Entre novamente para agendar.');
+      } else {
+        setErroEnvio(err.message);
+        // Horário ocupado no meio tempo (409) ou inválido (400): volta para escolher outro.
+        if (err.status === 409 || err.status === 400) {
+          setSelectedTime(null);
+          setStep(2);
+          carregarHorarios(selectedDate, service);
+        }
+      }
+    } finally {
+      setEnviando(false);
+    }
   };
 
   // Agendar exige e-mail e WhatsApp confirmados.
@@ -204,7 +271,7 @@ const Booking = ({ servicos, preSelectedService }) => {
             <div className="col-12 col-md-6" key={s.id}>
               <div
                 className={`pick-card ${service && service.id === s.id ? 'selected' : ''}`}
-                onClick={() => setService(s)}
+                onClick={() => escolherServico(s)}
               >
                 <div>
                   <div className="pc-title">{s.name}</div>
@@ -234,7 +301,14 @@ const Booking = ({ servicos, preSelectedService }) => {
     const { y, m } = viewMonth;
     const firstWeekday = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const isCurrentMonth = y === today.getFullYear() && m === today.getMonth();
+    // Navegação limitada aos meses da janela de agendamento (hoje … +3 meses).
+    const mesDe = (chave) => {
+      const [a, mes] = chave.split('-').map(Number);
+      return a * 12 + (mes - 1);
+    };
+    const mesAtual = y * 12 + m;
+    const isFirstMonth = mesAtual <= mesDe(janela.min);
+    const isLastMonth = mesAtual >= mesDe(janela.max);
 
     const keyOf = (day) => `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -250,7 +324,7 @@ const Booking = ({ servicos, preSelectedService }) => {
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(y, m, day);
       const key = keyOf(day);
-      const disabled = d < today || isClosed(d);
+      const disabled = !diaAgendavel(key, janela);
       const selected = selectedDate === key;
       cells.push(
         <button
@@ -258,10 +332,7 @@ const Booking = ({ servicos, preSelectedService }) => {
           type="button"
           disabled={disabled}
           className={`cal-day ${selected ? 'selected' : ''} ${d.getTime() === today.getTime() ? 'today' : ''}`}
-          onClick={() => {
-            setSelectedDate(key);
-            setSelectedTime(null);
-          }}
+          onClick={() => escolherData(key)}
         >
           {day}
         </button>
@@ -275,20 +346,17 @@ const Booking = ({ servicos, preSelectedService }) => {
       return `${WEEKDAYS[wd]} · ${String(sd).padStart(2, '0')} de ${MONTHS[sm - 1]}`;
     };
 
-    const renderTimeGrid = (times) => times.map(t => {
-      const unavailable = slotUnavailable(selectedDate, t);
-      return (
-        <button
-          key={t}
-          type="button"
-          disabled={unavailable}
-          className={`time-slot ${unavailable ? 'disabled' : ''} ${selectedTime === t ? 'selected' : ''}`}
-          onClick={() => setSelectedTime(t)}
-        >
-          {t}
-        </button>
-      );
-    });
+    const renderTimeGrid = (times) => times.map(t => (
+      <button
+        key={t}
+        type="button"
+        className={`time-slot ${selectedTime === t ? 'selected' : ''}`}
+        onClick={() => setSelectedTime(t)}
+      >
+        {t}
+      </button>
+    ));
+    const { manha, tarde } = separarPeriodos(horarios);
 
     return (
       <div className="step-panel" style={{ display: step === 2 ? 'block' : 'none' }}>
@@ -298,9 +366,9 @@ const Booking = ({ servicos, preSelectedService }) => {
           <div className="col-12 col-lg-6">
             <div className="calendar">
               <div className="cal-head">
-                <button type="button" className="date-arrow" aria-label="Mês anterior" disabled={isCurrentMonth} onClick={() => changeMonth(-1)}>‹</button>
+                <button type="button" className="date-arrow" aria-label="Mês anterior" disabled={isFirstMonth} onClick={() => changeMonth(-1)}>‹</button>
                 <b>{MONTHS[m]} {y}</b>
-                <button type="button" className="date-arrow" aria-label="Próximo mês" onClick={() => changeMonth(1)}>›</button>
+                <button type="button" className="date-arrow" aria-label="Próximo mês" disabled={isLastMonth} onClick={() => changeMonth(1)}>›</button>
               </div>
               <div className="cal-grid cal-weekdays">
                 {WEEKDAYS.map(w => <span key={w}>{w}</span>)}
@@ -317,21 +385,39 @@ const Booking = ({ servicos, preSelectedService }) => {
               ) : (
                 <>
                   <div className="times-date">{selectedLong()}</div>
-                  <div className="time-groups">
-                    <div>
-                      <h5>Manhã</h5>
-                      <div className="time-grid">{renderTimeGrid(TIMES_MANHA)}</div>
+                  {carregandoHorarios && <p className="times-empty">Carregando horários…</p>}
+                  {!carregandoHorarios && erroHorarios && (
+                    <p className="times-empty">{erroHorarios}</p>
+                  )}
+                  {!carregandoHorarios && !erroHorarios && horarios.length === 0 && (
+                    <p className="times-empty">Não há horários livres neste dia. Escolha outra data.</p>
+                  )}
+                  {!carregandoHorarios && horarios.length > 0 && (
+                    <div className="time-groups">
+                      {manha.length > 0 && (
+                        <div>
+                          <h5>Manhã</h5>
+                          <div className="time-grid">{renderTimeGrid(manha)}</div>
+                        </div>
+                      )}
+                      {tarde.length > 0 && (
+                        <div>
+                          <h5>Tarde</h5>
+                          <div className="time-grid">{renderTimeGrid(tarde)}</div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <h5>Tarde</h5>
-                      <div className="time-grid">{renderTimeGrid(TIMES_TARDE)}</div>
-                    </div>
-                  </div>
+                  )}
                 </>
               )}
             </div>
           </div>
         </div>
+        {erroEnvio && step === 2 && (
+          <div className="conta-alerta conta-alerta-erro booking-aviso" role="alert">
+            {erroEnvio}
+          </div>
+        )}
         {avisoVerificacao && (
           <div className="conta-alerta conta-alerta-aviso booking-aviso" role="alert">
             Para agendar, confirme seu e-mail e seu WhatsApp.{' '}
@@ -400,6 +486,11 @@ const Booking = ({ servicos, preSelectedService }) => {
             Alterar meus dados
           </Link>
         </p>
+        {erroEnvio && step === 3 && (
+          <div className="conta-alerta conta-alerta-erro" role="alert">
+            {erroEnvio}
+          </div>
+        )}
         <div className="row g-4">
           <div className="col-12 col-lg-7">
             <div className="pay-tabs">
@@ -429,8 +520,8 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <div className="pix-info">
                   <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
                   <div className="pix-amount">{amount}</div>
-                  <button className="btn btn-primary" onClick={() => setStep(4)}>
-                    Já realizei o pagamento
+                  <button className="btn btn-primary" disabled={enviando} onClick={() => confirmarAgendamento('pix')}>
+                    {enviando ? 'Confirmando…' : 'Já realizei o pagamento'}
                   </button>
                 </div>
               </div>
@@ -464,8 +555,8 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <span>Total a pagar</span>
                 <b>{amount}</b>
               </div>
-              <button className="btn btn-primary btn-block" style={{ marginTop: '22px' }} onClick={handleCardPayment}>
-                Pagar
+              <button className="btn btn-primary btn-block" style={{ marginTop: '22px' }} disabled={enviando} onClick={handleCardPayment}>
+                {enviando ? 'Confirmando…' : 'Pagar'}
               </button>
 
               <ConfirmDialog
@@ -501,8 +592,8 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
                 <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
                 <div className="amt">{amount}</div>
-                <button className="btn btn-primary" onClick={() => setStep(4)}>
-                  Confirmar agendamento
+                <button className="btn btn-primary" disabled={enviando} onClick={() => confirmarAgendamento('presencial')}>
+                  {enviando ? 'Confirmando…' : 'Confirmar agendamento'}
                 </button>
               </div>
             </div>

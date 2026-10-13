@@ -1,6 +1,6 @@
 # Barbearia Novo Estilo
 
-Site de agendamento + painel admin de uma barbearia (Curitiba/PR). Frontend React em `frontend/`; backend NestJS + Prisma + Supabase PostgreSQL em `backend/` (em construção: hoje só login do admin — o resto do frontend ainda é mock/estado local).
+Site de agendamento + painel admin de uma barbearia (Curitiba/PR). Frontend React em `frontend/`; backend NestJS + Prisma + Supabase PostgreSQL em `backend/` (em construção: login do admin, contas de cliente, serviços e agendamentos já existem; o frontend de agendamento, "Meus agendamentos" e a Agenda do admin ainda usam mock/estado local — Fase 6).
 
 ## Stack
 Frontend: React 19 + Vite 8 (JS/JSX, sem TypeScript), Bootstrap 5 (só grid/utilities), CSS próprio, oxlint, React Router 7 (`/` site, `/admin/*` painel). Sem testes no frontend.
