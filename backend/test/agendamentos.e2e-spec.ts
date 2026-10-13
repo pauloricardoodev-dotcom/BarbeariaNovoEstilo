@@ -8,7 +8,8 @@ import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
-import { instante } from '../src/agendamentos/horarios.js';
+import { CONFIG_PADRAO, instante } from '../src/agendamentos/horarios.js';
+import { CONFIGURACOES_PADRAO } from '../src/configuracoes/configuracoes.service.js';
 import { gerarHashSenha } from '../src/auth/senha.js';
 import { configurarApp } from '../src/configurar-app.js';
 import { Prisma } from '../src/generated/prisma/client.js';
@@ -102,6 +103,10 @@ describe('Agendamentos (e2e)', () => {
   let seq: number;
   /** Simula a corrida: a consulta de ocupados não enxerga ninguém, mas o INSERT bate no EXCLUDE. */
   let esconderOcupados = false;
+  let configuracao: any = { ...CONFIGURACOES_PADRAO };
+  // dias_especiais em memória: 'AAAA-MM-DD' -> { aberto, motivo }
+  let diasEspeciais = new Map<string, { aberto: boolean; motivo: string | null }>();
+  const chaveDia = (d: Date) => d.toISOString().slice(0, 10);
   let storage = new ThrottlerStorageService();
   const whatsapp = new WhatsAppFake();
   let cookieAdmin: string;
@@ -221,6 +226,33 @@ describe('Agendamentos (e2e)', () => {
           return Promise.resolve(c ? sessaoCliente(c) : null);
         },
         update: () => Promise.resolve({ id: 'x' }),
+      },
+      diaEspecial: {
+        findUnique: ({ where }: any) => {
+          const e = diasEspeciais.get(chaveDia(where.data));
+          return Promise.resolve(e ? { ...e } : null);
+        },
+        findMany: ({ where }: any) =>
+          Promise.resolve(
+            [...diasEspeciais]
+              .filter(([d]) => d >= chaveDia(where.data.gte) && d <= chaveDia(where.data.lte))
+              .map(([d, e]) => ({ data: new Date(d + 'T00:00:00.000Z'), ...e })),
+          ),
+        upsert: ({ where, update }: any) => {
+          diasEspeciais.set(chaveDia(where.data), { ...update });
+          return Promise.resolve({});
+        },
+        deleteMany: ({ where }: any) => {
+          diasEspeciais.delete(chaveDia(where.data));
+          return Promise.resolve({ count: 1 });
+        },
+      },
+      configuracao: {
+        findUnique: () => Promise.resolve({ ...configuracao }),
+        upsert: ({ update }: any) => {
+          configuracao = { ...configuracao, ...update };
+          return Promise.resolve({ ...configuracao });
+        },
       },
       servico: {
         findFirst: ({ where }: any) =>
@@ -399,6 +431,8 @@ describe('Agendamentos (e2e)', () => {
     reagendamentos = [];
     seq = 0;
     esconderOcupados = false;
+    configuracao = { ...CONFIGURACOES_PADRAO };
+    diasEspeciais = new Map();
     whatsapp.avisos = [];
     whatsapp.avisosReagendamento = [];
     whatsapp.falhar = false;
@@ -442,7 +476,7 @@ describe('Agendamentos (e2e)', () => {
     it.each([
       ['ontem', '2026-10-13'],
       ['passado', '2026-10-01'],
-      ['acima de 3 meses', '2027-01-15'],
+      ['acima de 90 dias', '2027-01-13'],
       ['dia inexistente', '2026-02-30'],
       ['formato errado', '15/10/2026'],
     ])('recusa data %s com 400', async (_n, data) => {
@@ -452,7 +486,7 @@ describe('Agendamentos (e2e)', () => {
     it('hoje, amanhã e o último dia da janela valem', async () => {
       await consulta('2026-10-14').expect(200);
       await consulta('2026-10-15').expect(200);
-      await consulta('2027-01-14').expect(200);
+      await consulta('2027-01-12').expect(200);
     });
 
     it('hoje só oferece horários com 2 h de antecedência (agora são 15:00; serviço de 45 min cabe até 18:00)', async () => {
@@ -522,7 +556,7 @@ describe('Agendamentos (e2e)', () => {
     it.each([
       ['hoje com menos de 2 h de antecedência', { data: '2026-10-14', hora: '16:00' }],
       ['ontem', { data: '2026-10-13' }],
-      ['mais de 3 meses', { data: '2027-01-15' }],
+      ['mais de 90 dias', { data: '2027-01-13' }],
       ['domingo', { data: '2026-10-18' }],
       ['fora da grade de 30 min', { hora: '10:15' }],
       ['almoço', { hora: '12:00' }],
@@ -616,7 +650,7 @@ describe('Agendamentos (e2e)', () => {
       ['hoje com menos de 2 h de antecedência', { data: '2026-10-14', hora: '16:00' }],
       ['hoje terminando depois das 18:00', { data: '2026-10-14', hora: '17:30' }],
       ['passado', { data: '2026-10-10', hora: '10:00' }],
-      ['mais de 3 meses', { data: '2027-01-15', hora: '10:00' }],
+      ['mais de 90 dias', { data: '2027-01-13', hora: '10:00' }],
       ['domingo', { data: '2026-10-18', hora: '10:00' }],
       ['fora da grade', { data: '2026-10-16', hora: '10:10' }],
       ['almoço', { data: '2026-10-16', hora: '12:30' }],
@@ -1072,6 +1106,224 @@ describe('Agendamentos (e2e)', () => {
       await reagendarComoAdmin(ag.id, { data: '2026-10-16', hora: '14:30' }).expect(409);
       await new Promise((r) => setTimeout(r, 50));
       expect(whatsapp.avisosReagendamento).toHaveLength(0);
+    });
+  });
+
+  // ------------------------------------------------------- configurações
+
+  describe('configurações do painel valem no site', () => {
+    const cfg = (extra: object = {}) => ({
+      nome: 'Barbearia Novo Estilo',
+      telefone: '(41) 3025-1187',
+      endereco: 'Rua das Palmeiras, 482',
+      manhaInicio: CONFIG_PADRAO.manhaInicio,
+      manhaFim: CONFIG_PADRAO.manhaFim,
+      tardeInicio: CONFIG_PADRAO.tardeInicio,
+      tardeFim: CONFIG_PADRAO.tardeFim,
+      antecedenciaHoras: CONFIG_PADRAO.antecedenciaHoras,
+      janelaDias: CONFIG_PADRAO.janelaDias,
+      diasTrabalho: CONFIG_PADRAO.diasTrabalho,
+      ...extra,
+    });
+    const horarios = async (data = '2026-10-15') =>
+      (await http().get('/api/disponibilidade').query({ data, servicoId: ID_SERVICO }).expect(200)).body.horarios as string[];
+
+    it('GET /api/configuracoes é público e devolve só dados do negócio', async () => {
+      const res = await http().get('/api/configuracoes').expect(200);
+      expect(res.body).toMatchObject({ nome: 'Barbearia Novo Estilo', manhaInicio: '08:00', tardeFim: '18:00' });
+    });
+
+    it('o painel exige admin para ler e gravar', async () => {
+      await http().get('/api/admin/configuracoes').expect(401);
+      await http().put('/api/admin/configuracoes').send(cfg()).expect(401);
+      await http().put('/api/admin/configuracoes').set('Cookie', cookieA).send(cfg()).expect(401);
+    });
+
+    it('mudar a manhã e a tarde muda os horários oferecidos', async () => {
+      const antes = await horarios();
+      expect(antes).toContain('08:00');
+      await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ manhaInicio: '09:00', manhaFim: '11:00', tardeInicio: '13:00', tardeFim: '16:00' }))
+        .expect(200);
+      const depois = await horarios();
+      expect(depois).not.toContain('08:00');
+      expect(depois).toContain('09:00');
+      expect(depois).not.toContain('11:00');
+      expect(depois).toContain('13:00');
+      expect(depois).not.toContain('16:00');
+      expect((await http().get('/api/configuracoes').expect(200)).body.manhaInicio).toBe('09:00');
+    });
+
+    it('agendar fora do novo expediente é recusado', async () => {
+      await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ manhaInicio: '09:00' }))
+        .expect(200);
+      await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ hora: '08:00' })).expect(400);
+      await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ hora: '09:00' })).expect(201);
+    });
+
+    it('a janela em dias e a antecedência configuradas valem', async () => {
+      await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ janelaDias: 7, antecedenciaHoras: 0 }))
+        .expect(200);
+      await http().get('/api/disponibilidade').query({ data: '2026-10-21', servicoId: ID_SERVICO }).expect(200);
+      const fora = await http().get('/api/disponibilidade').query({ data: '2026-10-22', servicoId: ID_SERVICO }).expect(400);
+      expect(fora.body.message).toMatch(/em até 7 dias/);
+      expect(await horarios('2026-10-14')).toContain('15:30'); // sem antecedência, agora são 15:00
+    });
+
+    it('os dias de trabalho escolhidos valem: terça, quinta e sábado abrem, o resto vira folga', async () => {
+      const salvo = await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ diasTrabalho: [6, 4, 2, 4] })) // fora de ordem e repetido: o servidor normaliza
+        .expect(200);
+      expect(salvo.body.diasTrabalho).toEqual([2, 4, 6]);
+      expect((await http().get('/api/configuracoes').expect(200)).body.diasTrabalho).toEqual([2, 4, 6]);
+      // 2026-10-15 quinta (abre), 2026-10-16 sexta (folga), 2026-10-17 sábado (abre), 2026-10-19 segunda (folga)
+      expect(await horarios('2026-10-15')).toContain('10:00');
+      expect(await horarios('2026-10-16')).toEqual([]);
+      expect(await horarios('2026-10-17')).toContain('10:00');
+      expect(await horarios('2026-10-19')).toEqual([]);
+      const res = await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ data: '2026-10-16' })).expect(400);
+      expect(res.body.message).toMatch(/Folga semanal \(sexta\)/);
+      const lista = await http().get('/api/dias-especiais').query({ de: '2026-10-14', ate: '2026-10-19' }).expect(200);
+      expect(lista.body.map((d: any) => d.data)).toEqual(['2026-10-14', '2026-10-16', '2026-10-18', '2026-10-19']);
+    });
+
+    it('o domingo abre se o dono o marcar como dia de trabalho', async () => {
+      await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ diasTrabalho: [1, 2, 3, 4, 5, 6, 7] }))
+        .expect(200);
+      expect(await horarios('2026-10-18')).toContain('10:00');
+    });
+
+    it('a reserva manual do admin usa o novo expediente', async () => {
+      await http()
+        .put('/api/admin/configuracoes')
+        .set('Cookie', cookieAdmin)
+        .send(cfg({ tardeFim: '17:00' }))
+        .expect(200);
+      const res = await http()
+        .post('/api/admin/agendamentos')
+        .set('Cookie', cookieAdmin)
+        .send({ nome: 'João', servicoId: ID_SERVICO, duracaoMinutos: 30, data: '2026-10-15', hora: '16:45' })
+        .expect(400);
+      expect(res.body.message).toMatch(/08:00–17:00/);
+    });
+
+    it.each([
+      ['fim da manhã antes do início', { manhaInicio: '10:00', manhaFim: '09:00' }],
+      ['tarde começando antes do fim da manhã', { manhaFim: '13:00', tardeInicio: '12:00' }],
+      ['fim da tarde antes do início', { tardeInicio: '15:00', tardeFim: '14:00' }],
+      ['hora mal formatada', { manhaInicio: '8h' }],
+      ['janela zero', { janelaDias: 0 }],
+      ['nenhum dia de trabalho', { diasTrabalho: [] }],
+      ['dia de trabalho inexistente', { diasTrabalho: [1, 8] }],
+      ['dias de trabalho em formato errado', { diasTrabalho: 'seg' }],
+      ['antecedência negativa', { antecedenciaHoras: -1 }],
+      ['nome vazio', { nome: '  ' }],
+    ])('recusa %s com 400 e não grava', async (_n, extra) => {
+      await http().put('/api/admin/configuracoes').set('Cookie', cookieAdmin).send(cfg(extra)).expect(400);
+      expect(configuracao).toEqual(CONFIGURACOES_PADRAO);
+    });
+  });
+
+  // ------------------------------------------------------- feriados e dias fechados
+
+  describe('dias fechados (feriados, domingos e bloqueios do dono)', () => {
+    const FERIADO = '2026-11-02'; // Finados (segunda)
+    const COMUM = '2026-10-16'; // sexta comum
+    const horarios = async (data: string) =>
+      (await http().get('/api/disponibilidade').query({ data, servicoId: ID_SERVICO }).expect(200)).body.horarios as string[];
+    const definir = (data: string, corpo: object) =>
+      http().put(`/api/admin/dias-especiais/${data}`).set('Cookie', cookieAdmin).send(corpo);
+
+    it('GET /api/dias-especiais é público e lista domingos e feriados do intervalo', async () => {
+      const res = await http().get('/api/dias-especiais').query({ de: '2026-11-01', ate: '2026-11-08' }).expect(200);
+      expect(res.body.map((d: any) => d.data)).toEqual(['2026-11-01', FERIADO, '2026-11-08']);
+      expect(res.body[1]).toMatchObject({ fechado: true, origem: 'feriado', motivo: 'Feriado: Finados' });
+      expect(JSON.stringify(res.body)).not.toMatch(/cliente|@/);
+    });
+
+    it.each([
+      ['intervalo invertido', { de: '2026-11-08', ate: '2026-11-01' }],
+      ['intervalo gigante', { de: '2026-01-01', ate: '2028-01-01' }],
+      ['data inexistente', { de: '2026-02-30', ate: '2026-03-01' }],
+      ['sem parâmetros', {}],
+    ])('recusa %s com 400', async (_n, query) => {
+      await http().get('/api/dias-especiais').query(query).expect(400);
+    });
+
+    it('feriado e domingo não têm horários nem aceitam agendamento', async () => {
+      expect(await horarios(FERIADO)).toEqual([]);
+      expect(await horarios('2026-10-18')).toEqual([]); // domingo
+      const res = await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ data: FERIADO })).expect(400);
+      expect(res.body.message).toMatch(/Feriado: Finados/);
+    });
+
+    it('desbloquear um feriado abre o dia; bloquear de novo volta ao padrão e apaga a exceção', async () => {
+      const aberto = await definir(FERIADO, { fechado: false }).expect(200);
+      expect(aberto.body).toMatchObject({ fechado: false, desbloqueado: true });
+      expect(await horarios(FERIADO)).toContain('10:00');
+      await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ data: FERIADO })).expect(201);
+      const lista = await http().get('/api/dias-especiais').query({ de: FERIADO, ate: FERIADO }).expect(200);
+      expect(lista.body[0]).toMatchObject({ fechado: false, desbloqueado: true });
+
+      await definir(FERIADO, { fechado: true }).expect(200);
+      expect(diasEspeciais.has(FERIADO)).toBe(false);
+      expect(await horarios(FERIADO)).toEqual([]);
+    });
+
+    it('o dono fecha um dia comum, com motivo, e isso vale para cliente e reserva manual', async () => {
+      expect(await horarios(COMUM)).toContain('10:00');
+      const fechado = await definir(COMUM, { fechado: true, motivo: 'Curso de barbearia' }).expect(200);
+      expect(fechado.body).toMatchObject({ fechado: true, origem: 'bloqueio', motivo: 'Curso de barbearia' });
+      expect(await horarios(COMUM)).toEqual([]);
+      const cliente = await http().post('/api/clientes/me/agendamentos').set('Cookie', cookieA).send(corpo({ data: COMUM })).expect(400);
+      expect(cliente.body.message).toMatch(/Curso de barbearia/);
+      const manual = await http()
+        .post('/api/admin/agendamentos')
+        .set('Cookie', cookieAdmin)
+        .send({ nome: 'João', servicoId: ID_SERVICO, duracaoMinutos: 30, data: COMUM, hora: '10:00' })
+        .expect(400);
+      expect(manual.body.message).toMatch(/Desbloquear dia/);
+
+      await definir(COMUM, { fechado: false }).expect(200);
+      expect(diasEspeciais.has(COMUM)).toBe(false);
+      expect(await horarios(COMUM)).toContain('10:00');
+    });
+
+    it('reagendar para um dia fechado é recusado (cliente e admin)', async () => {
+      const ag = semear({ inicio: instante('2026-10-15', '10:00') });
+      await definir(COMUM, { fechado: true }).expect(200);
+      await http().post(`/api/clientes/me/agendamentos/${ag.id}/reagendar`).set('Cookie', cookieA).send({ data: COMUM, hora: '10:00' }).expect(400);
+      await http().post(`/api/admin/agendamentos/${ag.id}/reagendar`).set('Cookie', cookieAdmin).send({ data: COMUM, hora: '10:00' }).expect(400);
+    });
+
+    it('fechar um dia não mexe em agendamentos que já existem nele', async () => {
+      const ag = semear({ inicio: instante(COMUM, '10:00') });
+      await definir(COMUM, { fechado: true }).expect(200);
+      const lista = await http().get('/api/admin/agendamentos').set('Cookie', cookieAdmin).query({ de: COMUM, ate: COMUM }).expect(200);
+      expect(lista.body.itens.map((a: any) => a.id)).toContain(ag.id);
+      expect(lista.body.itens.find((a: any) => a.id === ag.id).status).toBe('agendado');
+    });
+
+    it('só o admin altera dias; dia passado e data inválida dão 400', async () => {
+      await http().put(`/api/admin/dias-especiais/${COMUM}`).send({ fechado: true }).expect(401);
+      await http().put(`/api/admin/dias-especiais/${COMUM}`).set('Cookie', cookieA).send({ fechado: true }).expect(401);
+      await definir('2026-10-13', { fechado: true }).expect(400); // ontem
+      await definir('2026-02-30', { fechado: true }).expect(400);
+      await definir(COMUM, { fechado: 'sim' }).expect(400);
+      await definir(COMUM, { fechado: true, motivo: 'x'.repeat(121) }).expect(400);
     });
   });
 });

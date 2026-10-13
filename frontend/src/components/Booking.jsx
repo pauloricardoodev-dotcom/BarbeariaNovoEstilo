@@ -6,6 +6,8 @@ import { diaAgendavel, janelaDeAgendamento, separarPeriodos } from '../utils/dat
 import ConfirmDialog from './ConfirmDialog';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone } from '../utils/telefone';
+import useConfiguracoes from '../configuracao/useConfiguracoes';
+import useDiasFechados from '../configuracao/useDiasFechados';
 import {
   formatarCvv,
   formatarNomeCartao,
@@ -26,10 +28,14 @@ const MASCARAS_CARTAO = {
 // Os dados do cliente vêm do perfil (login obrigatório), sem etapa de identificação.
 const Booking = ({ servicos, preSelectedService }) => {
   const { cliente } = useSessaoCliente();
+  const configuracoes = useConfiguracoes();
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
-  // Agenda-se a partir de hoje (com 2 h de antecedência) e em até 3 meses; o servidor confere a mesma regra.
-  const janela = janelaDeAgendamento();
+  // Agenda-se a partir de hoje (com a antecedência mínima) e em até `janelaDias` (Configurações do painel);
+  // o servidor confere a mesma regra.
+  const janela = janelaDeAgendamento(configuracoes.janelaDias);
+  // Domingos, feriados e dias fechados pelo dono (null enquanto carrega): o calendário os mostra em preto.
+  const diasFechados = useDiasFechados(janela);
   const mesInicial = () => {
     const [y, m] = janela.min.split('-').map(Number);
     return { y, m: m - 1 };
@@ -147,9 +153,9 @@ const Booking = ({ servicos, preSelectedService }) => {
     };
     const ics = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
-      'SUMMARY:' + service.name + ' - Barbearia Novo Estilo',
-      'DESCRIPTION:Atendimento na Barbearia Novo Estilo',
-      'LOCATION:Rua das Palmeiras, 482, Batel, Curitiba - PR',
+      'SUMMARY:' + service.name + ' - ' + configuracoes.nome,
+      'DESCRIPTION:Atendimento na ' + configuracoes.nome,
+      'LOCATION:' + configuracoes.endereco,
       'DTSTART:' + fmt(start), 'DTEND:' + fmt(end),
       'END:VEVENT', 'END:VCALENDAR'
     ].join('\r\n');
@@ -301,7 +307,7 @@ const Booking = ({ servicos, preSelectedService }) => {
     const { y, m } = viewMonth;
     const firstWeekday = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
-    // Navegação limitada aos meses da janela de agendamento (hoje … +3 meses).
+    // Navegação limitada aos meses da janela de agendamento (hoje … +janelaDias).
     const mesDe = (chave) => {
       const [a, mes] = chave.split('-').map(Number);
       return a * 12 + (mes - 1);
@@ -324,14 +330,28 @@ const Booking = ({ servicos, preSelectedService }) => {
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(y, m, day);
       const key = keyOf(day);
-      const disabled = !diaAgendavel(key, janela);
+      const disabled = !diaAgendavel(key, janela, diasFechados);
       const selected = selectedDate === key;
+      // Dia fechado = bolinha preta; vizinhos fechados na mesma semana se unem (bolinha → cilindro).
+      const fechado = !!diasFechados?.has(key);
+      const coluna = (firstWeekday + day - 1) % 7;
+      const juntaEsq = fechado && coluna > 0 && day > 1 && diasFechados.has(keyOf(day - 1));
+      const juntaDir = fechado && coluna < 6 && day < daysInMonth && diasFechados.has(keyOf(day + 1));
+      const classes = [
+        'cal-day',
+        selected && 'selected',
+        d.getTime() === today.getTime() && 'today',
+        fechado && 'fechado',
+        juntaEsq && 'junta-esq',
+        juntaDir && 'junta-dir',
+      ].filter(Boolean).join(' ');
       cells.push(
         <button
           key={key}
           type="button"
           disabled={disabled}
-          className={`cal-day ${selected ? 'selected' : ''} ${d.getTime() === today.getTime() ? 'today' : ''}`}
+          className={classes}
+          title={fechado ? diasFechados.get(key).motivo : undefined}
           onClick={() => escolherData(key)}
         >
           {day}
@@ -356,7 +376,7 @@ const Booking = ({ servicos, preSelectedService }) => {
         {t}
       </button>
     ));
-    const { manha, tarde } = separarPeriodos(horarios);
+    const { manha, tarde } = separarPeriodos(horarios, configuracoes.manhaFim);
 
     return (
       <div className="step-panel" style={{ display: step === 2 ? 'block' : 'none' }}>
@@ -375,6 +395,9 @@ const Booking = ({ servicos, preSelectedService }) => {
               </div>
               <div className="cal-grid">
                 {cells}
+              </div>
+              <div className="cal-legenda">
+                <span className="cal-legenda-bolinha" aria-hidden="true" /> Fechado (domingos, feriados e dias sem atendimento)
               </div>
             </div>
           </div>

@@ -42,7 +42,7 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 - [x] Tabela `solicitacoes_cancelamento`: agendamento, `motivo` (texto obrigatório, não vazio), `status` (`pendente | aprovada | recusada`), resposta opcional do admin, decidido em/por; no máximo uma pendente por agendamento (índice único parcial).
 - [x] `GET /disponibilidade?data=&servicoId=` (público, só horários livres; recusa datas fora da janela).
 - [x] Cliente logado e verificado (conta não verificada recebe 403; listar não exige verificação):
-  - `POST /clientes/me/agendamentos`, `GET /clientes/me/agendamentos`. Horário dentro da janela: a partir de **hoje** (dia de calendário, fuso `America/Sao_Paulo`; hoje só com 2 h de antecedência) até 3 meses; só horários da grade de 30 min, dentro do expediente e fora do almoço.
+  - `POST /clientes/me/agendamentos`, `GET /clientes/me/agendamentos`. Horário dentro da janela: a partir de **hoje** (dia de calendário, fuso `America/Sao_Paulo`; antecedência mínima configurável, fábrica 2 h) até `janelaDias` (configurável, fábrica 90); só horários da grade de 30 min, dentro do expediente (manhã/tarde configuráveis) e fora do almoço.
   - `POST /clientes/me/agendamentos/:id/reagendar` — recebe só o novo dia/hora (serviço/duração não mudam); permitido até 2 h antes do início atual (exatamente 2 h ainda pode); atendimento que já começou/passou nunca; novo horário disponível e dentro da mesma janela; sem limite de vezes. Transação + atualização condicional + constraint contra conflito.
   - `POST /clientes/me/agendamentos/:id/solicitar-cancelamento` (motivo obrigatório; a qualquer momento antes do atendimento). Cliente **não** cancela diretamente.
 - [x] Admin: `GET /admin/agendamentos` (filtros `de`, `ate`, `status`, paginação), reserva manual `POST /admin/agendamentos` (nome, serviço, duração, data, hora; não aceita telefone/e-mail; pode usar qualquer minuto e o horário de almoço, mas dentro do expediente, fora de domingo e não no passado), `PATCH /admin/agendamentos/:id` (`concluido` só se já começou, ou `cancelado` direto — cancelar aprova qualquer pedido pendente), `GET /admin/solicitacoes-cancelamento`, `POST /admin/solicitacoes-cancelamento/:id/decidir` (aprovar ⇒ agendamento `cancelado`).
@@ -52,11 +52,13 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 ## Fase 6 — Ligar agendamento e admin
 - [x] `Booking.jsx`: remover o passo de identificação (dados vêm do perfil); login obrigatório já na abertura do site; aviso se a conta não estiver verificada.
 - [x] `Booking.jsx`: envia o agendamento (`POST /clientes/me/agendamentos`); calendário com disponibilidade real (`GET /disponibilidade`; `slotUnavailable` removido). Horário ocupado no meio tempo (409) volta ao passo 2 com a lista atualizada.
-- [x] Calendário do site limitado à janela (de hoje até 3 meses, sem domingos; hoje só com 2 h de antecedência).
+- [x] Calendário do site limitado à janela (de hoje até `janelaDias`, sem domingos; antecedência mínima configurável).
+- [x] Dias fechados: folgas semanais (dias de trabalho escolhidos em Configurações) e feriados fecham por padrão; o dono pode bloquear/desbloquear dias na Agenda; calendários do site (bolinhas/cilindros pretos) e do admin (caixas pretas) refletem (`dias_especiais`, `GET /api/dias-especiais`, `PUT /api/admin/dias-especiais/:data`).
+- [x] Configurações do painel valem no site (nome/contato, manhã e tarde, antecedência, janela): tabela `configuracoes` + `GET/PUT /api/admin/configuracoes`.
 - [x] "Meus agendamentos" ligado à API: reagendar só o horário (calendário na janela, horários livres reais, desabilitado com o motivo quando o servidor não permite) e "solicitar cancelamento" com motivo obrigatório; mostra o status do pedido (aguardando/recusado/aprovado + resposta). O mock `agendamentosMock.js` foi removido.
 - [x] Admin: `AgendaTab` lê a API (mês exibido + pedidos pendentes); reserva manual só com nome/serviço/duração (sem profissional, telefone ou e-mail); lista de pedidos de cancelamento com aprovar/recusar e aviso de pendentes; modal com concluir/cancelar. O modal de edição de horário/serviço foi removido (não há rota para isso).
 - Validado de ponta a ponta com o backend real contra um Postgres local descartável (27 verificações: conta não verificada, agendar, horário ocupado, reagendar, pedido de cancelamento recusado/aprovado, reserva manual, isolamento admin × cliente). Falta apenas um teste visual no navegador por você.
-- [ ] Dashboard do admin ainda lê o mock (`mockData.appointments`): ligar aos agendamentos reais.
+- [x] Dashboard do admin ligado aos agendamentos reais (`GET /api/admin/dashboard`).
 - [x] Aviso de pedidos pendentes no menu lateral: item "Notificações" (sino) com ponto vermelho, página própria; barbeiro reagenda um agendamento pelo modal ("Reagendamento").
 
 ## Pagamento com cartão (quando houver gateway)

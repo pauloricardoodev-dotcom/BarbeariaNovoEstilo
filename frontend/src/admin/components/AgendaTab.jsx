@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { atualizarStatusAgendamento, listarAgendamentos } from '../api/agendamentos';
+import { listarDiasEspeciais } from '../api/dias';
 import PageHeader from './PageHeader';
 import Calendar from './Calendar';
 import DailySchedule from './DailySchedule';
@@ -28,6 +29,8 @@ const AgendaTab = ({ notificacoes = 0, onNotificacoesMudaram }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [view, setView] = useState('calendar'); // 'calendar' ou 'day'
   const [agendamentos, setAgendamentos] = useState([]);
+  // Dias do mês que fogem do "dia comum aberto" (domingos, feriados, fechados e desbloqueados): 'AAAA-MM-DD' -> estado.
+  const [dias, setDias] = useState(() => new Map());
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -40,10 +43,12 @@ const AgendaTab = ({ notificacoes = 0, onNotificacoesMudaram }) => {
   // Recarrega ao trocar de mês e depois de qualquer alteração (recarga++).
   useEffect(() => {
     let cancelado = false;
-    listarAgendamentos(limitesDoMes(mes))
-      .then((lista) => {
+    const { de, ate } = limitesDoMes(mes);
+    Promise.all([listarAgendamentos({ de, ate }), listarDiasEspeciais(de, ate)])
+      .then(([lista, especiais]) => {
         if (cancelado) return;
         setAgendamentos(lista);
+        setDias(new Map(especiais.map((d) => [d.data, d])));
         setAtualizadoEm(new Date());
         setErro('');
       })
@@ -148,10 +153,12 @@ const AgendaTab = ({ notificacoes = 0, onNotificacoesMudaram }) => {
       )}
 
       {view === 'calendar' ? (
-        <Calendar mes={mes} onMonthChange={setMes} onDateSelect={handleDateSelect} appointments={agendamentos} />
+        <Calendar mes={mes} onMonthChange={setMes} onDateSelect={handleDateSelect} appointments={agendamentos} dias={dias} />
       ) : (
         <DailySchedule
           date={selectedDate}
+          dia={dias.get(selectedDate)}
+          onDiaAlterado={aposMudanca}
           appointments={agendamentos}
           concluindoId={concluindoId}
           onFeito={handleFeito}

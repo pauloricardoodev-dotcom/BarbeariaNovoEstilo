@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useSessaoCliente } from '../sessao/sessaoCliente';
 import useIrParaSecao from '../utils/useIrParaSecao';
+import useConfiguracoes from '../configuracao/useConfiguracoes';
 
 const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
@@ -11,6 +12,7 @@ const NAV_LINKS = [
 ];
 
 const Header = () => {
+  const { nome } = useConfiguracoes();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const irParaSecao = useIrParaSecao();
   const { status, cliente } = useSessaoCliente();
@@ -44,7 +46,7 @@ const Header = () => {
             </svg>
           </div>
           <div className="brand-text">
-            <b>Barbearia Novo Estilo</b>
+            <b>{nome}</b>
             <small>BARBEARIA CLÁSSICA</small>
           </div>
         </a>

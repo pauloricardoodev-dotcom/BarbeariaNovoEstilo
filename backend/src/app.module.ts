@@ -7,6 +7,8 @@ import { AppService } from './app.service.js';
 import { AgendamentosModule } from './agendamentos/agendamentos.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { ClientesModule } from './clientes/clientes.module.js';
+import { ConfiguracoesModule } from './configuracoes/configuracoes.module.js';
+import { DiasModule } from './dias/dias.module.js';
 import { validarEnv } from './config/env.validation.js';
 import { MensagensModule } from './mensagens/mensagens.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -21,6 +23,8 @@ import { ServicosModule } from './servicos/servicos.module.js';
     AuthModule,
     MensagensModule,
     ClientesModule,
+    ConfiguracoesModule,
+    DiasModule,
     ServicosModule,
     AgendamentosModule,
   ],

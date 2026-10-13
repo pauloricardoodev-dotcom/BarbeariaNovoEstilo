@@ -2,7 +2,7 @@ import { MONTHS, WEEKDAYS } from '../../data/constants';
 
 // O mês exibido é controlado pela Agenda (`mes` = { y, m }), que busca os agendamentos dele na API
 // e preserva o mês ao voltar da visão do dia.
-const Calendar = ({ onDateSelect, appointments, mes, onMonthChange }) => {
+const Calendar = ({ onDateSelect, appointments, dias, mes, onMonthChange }) => {
   const currentDate = new Date(mes.y, mes.m, 1);
   const setCurrentDate = (d) => onMonthChange({ y: d.getFullYear(), m: d.getMonth() });
 
@@ -53,6 +53,8 @@ const Calendar = ({ onDateSelect, appointments, mes, onMonthChange }) => {
     ['low', 'Poucas reservas'],
     ['medium', 'Muitas reservas'],
     ['full', 'Dia cheio'],
+    ['fechado', 'Fechado (domingo, feriado ou bloqueado)'],
+    ['desbloqueado', 'Desbloqueado'],
   ];
 
   return (
@@ -85,12 +87,16 @@ const Calendar = ({ onDateSelect, appointments, mes, onMonthChange }) => {
           {days.map(day => {
             const occupancy = getDayOccupancyLevel(day);
             const dayAppointments = getAppointmentsForDayByMonth(day, currentDate.getMonth(), currentDate.getFullYear());
+            const chave = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const estado = dias.get(chave);
+            const marca = estado?.fechado ? 'fechado' : estado?.desbloqueado ? 'desbloqueado' : '';
 
             return (
               <button
                 type="button"
                 key={day}
-                className={`calendar-day ${occupancy}`}
+                className={`calendar-day ${occupancy} ${marca}`}
+                title={estado?.motivo ?? undefined}
                 onClick={() => handleDayClick(day)}
               >
                 <span className="day-number">{day}</span>

@@ -12,17 +12,19 @@ import {
   ehConflitoDeHorario,
   AgendamentosService,
 } from '../src/agendamentos/agendamentos.service.js';
-import { dataSP, instante, somarDias, diaDaSemana } from '../src/agendamentos/horarios.js';
+import { dataSP, instante, somarDias } from '../src/agendamentos/horarios.js';
+import { CONFIG_PADRAO } from '../src/agendamentos/horarios.js';
+import { padraoDoDia } from '../src/dias/dias.js';
 import type { ClienteAutenticado } from '../src/clientes/clientes.types.js';
 import { configurarApp } from '../src/configurar-app.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 const PREFIXO = `teste-${randomUUID().slice(0, 8)}`;
 
-/** Um dia útil (seg–sáb) dentro da janela de agendamento: a partir de ~5 dias, nunca domingo. */
+/** Um dia aberto (nem domingo nem feriado) dentro da janela de agendamento, a partir de ~5 dias. */
 function diaDeTeste(deslocamento = 0): string {
   let dia = somarDias(dataSP(new Date()), 5 + deslocamento);
-  while (diaDaSemana(dia) === 0) dia = somarDias(dia, 1);
+  while (padraoDoDia(dia, CONFIG_PADRAO).fechado) dia = somarDias(dia, 1);
   return dia;
 }
 

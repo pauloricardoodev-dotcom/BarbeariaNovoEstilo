@@ -7,6 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { ClienteAutenticado } from '../clientes/clientes.types.js';
+import { ConfiguracoesService } from '../configuracoes/configuracoes.service.js';
+import type { EstadoDia } from '../dias/dias.js';
+import { DiasService } from '../dias/dias.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { WhatsAppService } from '../mensagens/mensagens.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -34,14 +37,27 @@ import {
   podeReagendarAgora,
   somarDias,
   sobrepoe,
+  descreverDiasDeTrabalho,
+  type ConfigHorarios,
   type Intervalo,
 } from './horarios.js';
 
 type Db = Prisma.TransactionClient;
 
-const MSG_JANELA = 'Escolha uma data a partir de hoje e em até 3 meses.';
-const MSG_ANTECEDENCIA =
-  'Escolha um horário com pelo menos 2 horas de antecedência.';
+const plural = (n: number, singular: string, plural: string) =>
+  `${n} ${n === 1 ? singular : plural}`;
+const msgJanela = (c: ConfigHorarios) =>
+  `Escolha uma data a partir de hoje e em até ${plural(c.janelaDias, 'dia', 'dias')}.`;
+const msgAntecedencia = (c: ConfigHorarios) =>
+  c.antecedenciaHoras === 0
+    ? 'Escolha um horário que ainda não passou.'
+    : `Escolha um horário com pelo menos ${plural(c.antecedenciaHoras, 'hora', 'horas')} de antecedência.`;
+const msgDiaFechadoCliente = (d: EstadoDia) =>
+  `Não abrimos nesta data (${d.motivo ?? 'dia fechado'}). Escolha outro dia.`;
+const msgDiaFechadoAdmin = (d: EstadoDia) =>
+  `Este dia está fechado (${d.motivo ?? 'dia fechado'}). Use "Desbloquear dia" na Agenda para marcar nele.`;
+const msgExpediente = (c: ConfigHorarios) =>
+  `Fora do expediente (${descreverDiasDeTrabalho(c)}, ${c.manhaInicio}–${c.tardeFim}).`;
 const MSG_HORARIO_INDISPONIVEL = 'Este horário não está disponível.';
 const MSG_CONFLITO =
   'Este horário acabou de ser ocupado. Escolha outro horário.';
@@ -320,6 +336,8 @@ export class AgendamentosService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsAppService,
+    private readonly configuracoes: ConfiguracoesService,
+    private readonly dias: DiasService,
   ) {}
 
   /** Relógio do servidor; isolado para facilitar testes. */
@@ -380,14 +398,24 @@ export class AgendamentosService {
   }> {
     this.exigirDataEHora(dto.data);
     const agora = this.agora();
-    if (!dataNaJanela(dto.data, agora)) {
-      throw new BadRequestException(MSG_JANELA);
+    const config = await this.configuracoes.obter();
+    if (!dataNaJanela(dto.data, agora, config)) {
+      throw new BadRequestException(msgJanela(config));
     }
     const servico = await this.servicoAtivo(dto.servicoId);
+    if ((await this.dias.estado(dto.data, config)).fechado) {
+      return { data: dto.data, horarios: [] };
+    }
     const ocupados = await this.ocupadosDoDia(this.prisma, dto.data);
     return {
       data: dto.data,
-      horarios: horariosLivres(dto.data, servico.duracaoMinutos, ocupados, agora),
+      horarios: horariosLivres(
+        dto.data,
+        servico.duracaoMinutos,
+        ocupados,
+        agora,
+        config,
+      ),
     };
   }
 
@@ -411,15 +439,20 @@ export class AgendamentosService {
     this.exigirContaVerificada(cliente);
     this.exigirDataEHora(dto.data, dto.hora);
     const agora = this.agora();
-    if (!dataNaJanela(dto.data, agora)) {
-      throw new BadRequestException(MSG_JANELA);
+    const config = await this.configuracoes.obter();
+    if (!dataNaJanela(dto.data, agora, config)) {
+      throw new BadRequestException(msgJanela(config));
     }
     const servico = await this.servicoAtivo(dto.servicoId);
-    if (!horarioDeClienteValido(dto.data, dto.hora, servico.duracaoMinutos)) {
+    const dia = await this.dias.estado(dto.data, config);
+    if (dia.fechado) throw new BadRequestException(msgDiaFechadoCliente(dia));
+    if (
+      !horarioDeClienteValido(dto.hora, servico.duracaoMinutos, config)
+    ) {
       throw new BadRequestException(MSG_HORARIO_INDISPONIVEL);
     }
-    if (!antecedenciaSuficiente(dto.data, dto.hora, agora)) {
-      throw new BadRequestException(MSG_ANTECEDENCIA);
+    if (!antecedenciaSuficiente(dto.data, dto.hora, agora, config)) {
+      throw new BadRequestException(msgAntecedencia(config));
     }
     const inicio = instante(dto.data, dto.hora);
     const fim = new Date(inicio.getTime() + servico.duracaoMinutos * 60_000);
@@ -483,14 +516,19 @@ export class AgendamentosService {
         'Só é possível reagendar até 2 horas antes do horário.',
       );
     }
-    if (!dataNaJanela(dto.data, agora)) {
-      throw new BadRequestException(MSG_JANELA);
+    const config = await this.configuracoes.obter();
+    if (!dataNaJanela(dto.data, agora, config)) {
+      throw new BadRequestException(msgJanela(config));
     }
-    if (!horarioDeClienteValido(dto.data, dto.hora, atual.duracaoMinutos)) {
+    const dia = await this.dias.estado(dto.data, config);
+    if (dia.fechado) throw new BadRequestException(msgDiaFechadoCliente(dia));
+    if (
+      !horarioDeClienteValido(dto.hora, atual.duracaoMinutos, config)
+    ) {
       throw new BadRequestException(MSG_HORARIO_INDISPONIVEL);
     }
-    if (!antecedenciaSuficiente(dto.data, dto.hora, agora)) {
-      throw new BadRequestException(MSG_ANTECEDENCIA);
+    if (!antecedenciaSuficiente(dto.data, dto.hora, agora, config)) {
+      throw new BadRequestException(msgAntecedencia(config));
     }
     const novoInicio = instante(dto.data, dto.hora);
     if (novoInicio.getTime() === atual.inicio.getTime()) {
@@ -635,10 +673,11 @@ export class AgendamentosService {
   async criarReservaManual(dto: ReservaManualDto): Promise<AgendamentoAdmin> {
     this.exigirDataEHora(dto.data, dto.hora);
     const servico = await this.servicoAtivo(dto.servicoId);
-    if (!horarioDeAdminValido(dto.data, dto.hora, dto.duracaoMinutos)) {
-      throw new BadRequestException(
-        'Fora do expediente (segunda a sábado, 08:00–18:00).',
-      );
+    const config = await this.configuracoes.obter();
+    const dia = await this.dias.estado(dto.data, config);
+    if (dia.fechado) throw new BadRequestException(msgDiaFechadoAdmin(dia));
+    if (!horarioDeAdminValido(dto.hora, dto.duracaoMinutos, config)) {
+      throw new BadRequestException(msgExpediente(config));
     }
     const inicio = instante(dto.data, dto.hora);
     if (inicio < this.agora()) {
@@ -757,10 +796,11 @@ export class AgendamentosService {
         'Atendimento que já começou ou passou não pode ser reagendado.',
       );
     }
-    if (!horarioDeAdminValido(dto.data, dto.hora, atual.duracaoMinutos)) {
-      throw new BadRequestException(
-        'Fora do expediente (segunda a sábado, 08:00–18:00).',
-      );
+    const config = await this.configuracoes.obter();
+    const dia = await this.dias.estado(dto.data, config);
+    if (dia.fechado) throw new BadRequestException(msgDiaFechadoAdmin(dia));
+    if (!horarioDeAdminValido(dto.hora, atual.duracaoMinutos, config)) {
+      throw new BadRequestException(msgExpediente(config));
     }
     const novoInicio = instante(dto.data, dto.hora);
     if (novoInicio < agora) {

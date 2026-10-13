@@ -1,81 +1,66 @@
-import { useState, useMemo } from 'react';
-import { appointments } from '../data/mockData';
+import { useEffect, useState } from 'react';
+import { buscarResumo } from '../api/dashboard';
 import { MONTHS } from '../../data/constants';
 import Icone from './Icones';
 import PageHeader from './PageHeader';
 
-const DashboardTab = () => {
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+const chaveDoMes = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const dinheiro = (valor) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const monthOptions = () => {
+  const now = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return { value: chaveDoMes(date), label: `${MONTHS[date.getMonth()]} ${date.getFullYear()}` };
   });
+};
 
-  const stats = useMemo(() => {
-    const [selectedMonthNum, selectedYear] = selectedMonth.split('/');
-    const monthAppointments = appointments.filter(apt => {
-      const aptMonth = apt.date.split('/')[1];
-      const aptYear = apt.date.split('/')[2];
-      return aptMonth === selectedMonthNum && aptYear === selectedYear;
-    });
+const DashboardTab = () => {
+  const [selectedMonth, setSelectedMonth] = useState(() => chaveDoMes(new Date()));
+  const [resumo, setResumo] = useState(null);
+  const [erro, setErro] = useState('');
 
-    const completedAppointments = monthAppointments.filter(apt => apt.status === 'concluido');
-    const cancelledAppointments = monthAppointments.filter(apt => apt.status === 'cancelado');
+  const [versao, setVersao] = useState(0);
+  const recarregar = () => setVersao((v) => v + 1);
 
-    const revenue = completedAppointments.reduce((sum, apt) => sum + apt.service.price, 0);
-
-    // Service count
-    const serviceCount = {};
-    completedAppointments.forEach(apt => {
-      const serviceName = apt.service.name;
-      serviceCount[serviceName] = (serviceCount[serviceName] || 0) + 1;
-    });
-
-    // Daily revenue
-    const dailyRevenue = {};
-    completedAppointments.forEach(apt => {
-      const day = apt.date.split('/')[0];
-      dailyRevenue[day] = (dailyRevenue[day] || 0) + apt.service.price;
-    });
-
-    return {
-      totalClients: monthAppointments.length,
-      revenue,
-      totalAppointments: monthAppointments.length,
-      cancellations: cancelledAppointments.length,
-      serviceCount,
-      dailyRevenue
+  useEffect(() => {
+    let cancelado = false;
+    buscarResumo(selectedMonth)
+      .then((dados) => {
+        if (cancelado) return;
+        setResumo(dados);
+        setErro('');
+      })
+      .catch((e) => !cancelado && setErro(e.message));
+    return () => {
+      cancelado = true;
     };
-  }, [selectedMonth]);
+  }, [selectedMonth, versao]);
 
-  const sortedServices = Object.entries(stats.serviceCount)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 4);
+  // Reconsulta ao voltar para a aba/janela, para refletir o que mudou na Agenda.
+  useEffect(() => {
+    const aoVoltar = () => document.visibilityState === 'visible' && setVersao((v) => v + 1);
+    document.addEventListener('visibilitychange', aoVoltar);
+    window.addEventListener('focus', aoVoltar);
+    return () => {
+      document.removeEventListener('visibilitychange', aoVoltar);
+      window.removeEventListener('focus', aoVoltar);
+    };
+  }, []);
 
-  const sortedDailyRevenue = Object.entries(stats.dailyRevenue)
-    .sort(([a], [b]) => parseInt(a) - parseInt(b));
-
-  const maxRevenue = Math.max(...Object.values(stats.dailyRevenue), 1);
-
-  const monthOptions = (() => {
-    const now = new Date();
-    const options = [];
-    for (let i = 0; i < 6; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthStr = `${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-      options.push(
-        <option key={monthStr} value={monthStr}>
-          {MONTHS[date.getMonth()]} {date.getFullYear()}
-        </option>
-      );
-    }
-    return options;
-  })();
+  // Enquanto o mês escolhido carrega, não mostra os números do mês anterior.
+  const atual = resumo?.mes === selectedMonth ? resumo : null;
+  const totais = atual?.totais;
+  const faturamentoPorDia = atual?.faturamentoPorDia ?? [];
+  const servicos = atual?.servicos ?? [];
+  const maxRevenue = Math.max(...faturamentoPorDia.map((d) => d.valor), 1);
 
   const cards = [
-    { icon: 'clientes', title: 'Clientes no Mês', value: stats.totalClients, subtitle: 'Atendimentos registrados' },
-    { icon: 'faturamento', title: 'Faturamento', value: `R$ ${stats.revenue.toFixed(2)}`, subtitle: 'Serviços concluídos' },
-    { icon: 'agenda', title: 'Agendamentos', value: stats.totalAppointments, subtitle: 'Total de reservas' },
-    { icon: 'cancelamentos', title: 'Cancelamentos', value: stats.cancellations, subtitle: 'Reservas canceladas' },
+    { icon: 'clientes', title: 'Clientes no Mês', value: totais?.clientes, subtitle: 'Clientes distintos com agendamento' },
+    { icon: 'faturamento', title: 'Faturamento', value: totais && dinheiro(totais.faturamento), subtitle: 'Serviços concluídos' },
+    { icon: 'agenda', title: 'Agendamentos', value: totais?.agendamentos, subtitle: 'Total de reservas' },
+    { icon: 'cancelamentos', title: 'Cancelamentos', value: totais?.cancelados, subtitle: 'Reservas canceladas' },
   ];
 
   return (
@@ -86,9 +71,18 @@ const DashboardTab = () => {
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
-          {monthOptions}
+          {monthOptions().map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
       </PageHeader>
+
+      {erro && (
+        <div className="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+          <span>{erro}</span>
+          <button type="button" className="btn btn-sm btn-outline-danger" onClick={recarregar}>Tentar novamente</button>
+        </div>
+      )}
 
       <div className="row g-3 mb-4">
         {cards.map(card => (
@@ -98,7 +92,7 @@ const DashboardTab = () => {
                 <div className="stat-icon"><Icone nome={card.icon} size={28} /></div>
                 <div>
                   <div className="text-secondary small text-uppercase fw-semibold">{card.title}</div>
-                  <div className="stat-value">{card.value}</div>
+                  <div className="stat-value">{card.value ?? '—'}</div>
                   <div className="text-secondary small">{card.subtitle}</div>
                 </div>
               </div>
@@ -112,14 +106,14 @@ const DashboardTab = () => {
           <div className="card h-100">
             <div className="card-body">
               <h3 className="h5 calendar-title mb-3">Faturamento por Dia</h3>
-              {sortedDailyRevenue.length > 0 ? (
+              {faturamentoPorDia.length > 0 ? (
                 <div className="bar-chart">
-                  {sortedDailyRevenue.map(([day, revenue]) => (
-                    <div key={day} className="bar-item">
-                      <div className="bar-fill" style={{ height: `${(revenue / maxRevenue) * 100}%` }}>
-                        <div className="bar-value">R$ {revenue}</div>
+                  {faturamentoPorDia.map(({ dia, valor }) => (
+                    <div key={dia} className="bar-item">
+                      <div className="bar-fill" style={{ height: `${(valor / maxRevenue) * 100}%` }}>
+                        <div className="bar-value">{dinheiro(valor)}</div>
                       </div>
-                      <div className="small text-secondary">{day}</div>
+                      <div className="small text-secondary">{dia.slice(8)}</div>
                     </div>
                   ))}
                 </div>
@@ -134,12 +128,12 @@ const DashboardTab = () => {
           <div className="card h-100">
             <div className="card-body">
               <h3 className="h5 calendar-title mb-3">Serviços Mais Realizados</h3>
-              {sortedServices.length > 0 ? (
+              {servicos.length > 0 ? (
                 <ul className="list-group list-group-flush">
-                  {sortedServices.map(([serviceName, count]) => (
-                    <li key={serviceName} className="list-group-item d-flex justify-content-between align-items-center px-0">
-                      <span>{serviceName}</span>
-                      <span className="badge text-bg-primary rounded-pill">{count}</span>
+                  {servicos.map(({ nome, quantidade }) => (
+                    <li key={nome} className="list-group-item d-flex justify-content-between align-items-center px-0">
+                      <span>{nome}</span>
+                      <span className="badge text-bg-primary rounded-pill">{quantidade}</span>
                     </li>
                   ))}
                 </ul>

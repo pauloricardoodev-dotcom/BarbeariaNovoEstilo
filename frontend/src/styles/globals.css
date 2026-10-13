@@ -923,6 +923,57 @@ nav.main-nav a:hover {
   text-decoration: line-through;
 }
 
+/* Dia fechado: bolinha preta. Dias vizinhos na mesma semana se unem num cilindro (a ponte ::after cobre o espaço da grade). */
+.cal-day.fechado,
+.cal-day.fechado:disabled {
+  position: relative;
+  background: var(--navy);
+  border-color: var(--navy);
+  border-radius: 50%;
+  color: var(--white);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+.cal-day.fechado.junta-esq {
+  border-radius: 0 50% 50% 0;
+}
+
+.cal-day.fechado.junta-dir {
+  border-radius: 50% 0 0 50%;
+}
+
+.cal-day.fechado.junta-esq.junta-dir {
+  border-radius: 0;
+}
+
+.cal-day.fechado.junta-dir::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 100%;
+  width: 7px;
+  background: var(--navy);
+}
+
+.cal-legenda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.cal-legenda-bolinha {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--navy);
+}
+
 .times-panel {
   height: 100%;
   background: var(--white);

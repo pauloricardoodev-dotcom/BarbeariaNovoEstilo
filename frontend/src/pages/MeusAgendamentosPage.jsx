@@ -7,6 +7,8 @@ import {
 } from '../api/agendamentos';
 import Campo from '../components/conta/Campo';
 import ContaLayout, { Alerta } from '../components/conta/ContaLayout';
+import useConfiguracoes from '../configuracao/useConfiguracoes';
+import useDiasFechados from '../configuracao/useDiasFechados';
 import {
   diaAgendavel,
   diaDaSemana,
@@ -20,9 +22,11 @@ const PAGAMENTOS = { pix: 'Pix', cartao: 'Cartão', presencial: 'No salão' };
 const STATUS = { agendado: 'Agendado', concluido: 'Concluído', cancelado: 'Cancelado' };
 const formatarPreco = (v) => 'R$ ' + v.toFixed(2).replace('.', ',');
 
-/** Escolha do novo dia e horário. Só muda o horário; o servidor confere janela, 2 h e disponibilidade. */
+/** Escolha do novo dia e horário. Só muda o horário; o servidor confere janela, antecedência e disponibilidade. */
 const Reagendar = ({ agendamento, aoConcluir, aoVoltar }) => {
-  const janela = janelaDeAgendamento();
+  const configuracoes = useConfiguracoes();
+  const janela = janelaDeAgendamento(configuracoes.janelaDias);
+  const diasFechados = useDiasFechados(janela);
   const [data, setData] = useState('');
   const [hora, setHora] = useState('');
   const [horarios, setHorarios] = useState([]);
@@ -51,8 +55,13 @@ const Reagendar = ({ agendamento, aoConcluir, aoVoltar }) => {
     setHorarios([]);
     setData('');
     if (!valor) return;
-    if (!diaAgendavel(valor, janela)) {
-      setErro('Escolha um dia de segunda a sábado, a partir de hoje e em até 3 meses.');
+    if (!diaAgendavel(valor, janela, diasFechados)) {
+      const fechado = diasFechados?.get(valor);
+      setErro(
+        fechado
+          ? `Não abrimos nesta data (${fechado.motivo}). Escolha outro dia.`
+          : `Escolha um dia aberto, a partir de hoje e em até ${configuracoes.janelaDias} dias.`,
+      );
       return;
     }
     setData(valor);
@@ -73,7 +82,7 @@ const Reagendar = ({ agendamento, aoConcluir, aoVoltar }) => {
     }
   };
 
-  const { manha, tarde } = separarPeriodos(horarios);
+  const { manha, tarde } = separarPeriodos(horarios, configuracoes.manhaFim);
   const botoes = (lista) =>
     lista.map((h) => (
       <button

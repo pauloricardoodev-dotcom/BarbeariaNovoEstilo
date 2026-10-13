@@ -340,6 +340,28 @@
   color: #fff;
 }
 
+/* Dia fechado (domingo, feriado ou bloqueado pelo dono): caixa preta. Desbloqueado: contorno tracejado. */
+.calendar-day.fechado,
+.calendar-day.fechado:hover {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.calendar-day.fechado:hover {
+  background: var(--navy-2);
+}
+
+.calendar-day.desbloqueado {
+  border-style: dashed;
+  border-color: var(--navy);
+}
+
+.dia-fechado-aviso {
+  background: var(--navy);
+  color: #fff;
+}
+
 .day-number {
   font-size: 1.375rem;
   line-height: 1.1;
@@ -372,6 +394,79 @@
 .legend-color.full {
   background: var(--wine);
   border-color: var(--wine);
+}
+
+/* Dias de trabalho (Configurações): fileira de interruptores — vermelho = trabalha, cinza = folga. */
+.dias-semana {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 0.9rem;
+}
+
+.dia-switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.dia-switch-trilho {
+  position: relative;
+  width: 46px;
+  height: 25px;
+  border-radius: 999px;
+  background: #c4c7cc;
+  transition: background-color 0.18s ease;
+}
+
+.dia-switch-bolinha {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s ease;
+}
+
+.dia-switch.ativo .dia-switch-trilho {
+  background: #dc3545;
+}
+
+.dia-switch.ativo .dia-switch-bolinha {
+  transform: translateX(21px);
+}
+
+.dia-switch-nome {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #8a8e94;
+}
+
+.dia-switch.ativo .dia-switch-nome {
+  color: var(--ink);
+}
+
+.dia-switch:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.legend-color.fechado {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.legend-color.desbloqueado {
+  border-style: dashed;
+  border-color: var(--navy);
 }
 
 .time-slot {

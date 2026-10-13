@@ -36,29 +36,29 @@ export const formatarInstante = (iso) => {
 };
 
 /**
- * Janela de datas para agendar e reagendar: de hoje até 3 meses à frente (inclusive). Hoje só tem horários
- * com 2 h de antecedência, o que a consulta de disponibilidade já respeita. Espelha o servidor, que decide de fato.
+ * Janela de datas para agendar e reagendar: de hoje até `janelaDias` à frente (inclusive; vem das Configurações
+ * do painel). Hoje só tem horários com a antecedência mínima, o que a consulta de disponibilidade já respeita.
+ * Espelha o servidor, que decide de fato.
  */
-export const janelaDeAgendamento = (agora = new Date()) => {
+export const janelaDeAgendamento = (janelaDias, agora = new Date()) => {
   const min = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-  const ultimoDiaDoMesAlvo = new Date(agora.getFullYear(), agora.getMonth() + 4, 0).getDate();
-  const max = new Date(
-    agora.getFullYear(),
-    agora.getMonth() + 3,
-    Math.min(agora.getDate(), ultimoDiaDoMesAlvo),
-  );
+  const max = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + janelaDias);
   return { min: paraChave(min), max: paraChave(max) };
 };
 
-/** Dia válido para agendar: dentro da janela e não domingo. */
-export const diaAgendavel = (chave, janela = janelaDeAgendamento()) => {
+/**
+ * Dia válido para agendar: dentro da janela e aberto. `fechados` é o Map de dias fechados vindo da API
+ * (domingos, feriados e bloqueios do dono); enquanto ele não chega (null), vale a regra de domingo.
+ */
+export const diaAgendavel = (chave, janela, fechados = null) => {
   if (chave < janela.min || chave > janela.max) return false;
+  if (fechados) return !fechados.has(chave);
   const [a, m, d] = chave.split('-').map(Number);
   return new Date(a, m - 1, d).getDay() !== 0;
 };
 
-/** Separa horários em manhã (< 12:00) e tarde. */
-export const separarPeriodos = (horarios) => ({
-  manha: horarios.filter((h) => h < '12:00'),
-  tarde: horarios.filter((h) => h >= '12:00'),
+/** Separa horários em manhã (antes de `fimManha`, 'HH:mm') e tarde. */
+export const separarPeriodos = (horarios, fimManha) => ({
+  manha: horarios.filter((h) => h < fimManha),
+  tarde: horarios.filter((h) => h >= fimManha),
 });

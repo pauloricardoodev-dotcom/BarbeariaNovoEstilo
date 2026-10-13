@@ -108,6 +108,40 @@ model Servico {
   @@map("servicos")
 }
 
+/// Configurações da barbearia: linha única (id sempre true, garantido por CHECK). Horários em 'HH:mm'
+/// (ordem e formato garantidos por CHECK). Ver migration 20261013160000_configuracoes.
+model Configuracao {
+  id                Boolean  @id @default(true)
+  nome              String
+  telefone          String
+  endereco          String
+  manhaInicio       String   @map("manha_inicio")
+  manhaFim          String   @map("manha_fim")
+  tardeInicio       String   @map("tarde_inicio")
+  tardeFim          String   @map("tarde_fim")
+  antecedenciaHoras Int      @default(2) @map("antecedencia_horas")
+  janelaDias        Int      @default(90) @map("janela_dias")
+  /// Dias de trabalho da semana (1 = segunda … 7 = domingo), sem repetição. Os demais são folga semanal.
+  diasTrabalho      Int[]    @default([1, 2, 3, 4, 5, 6]) @map("dias_trabalho")
+  /// Atualizado pelo trigger trg_configuracoes_updated_at.
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("configuracoes")
+}
+
+/// Exceções do dono ao calendário (domingos e feriados fecham por padrão, calculados no backend):
+/// aberto = false fecha um dia comum; aberto = true desbloqueia um domingo/feriado. Ver migration 20261013170000_dias_especiais.
+model DiaEspecial {
+  data      DateTime @id @db.Date
+  aberto    Boolean
+  motivo    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_dias_especiais_updated_at.
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("dias_especiais")
+}
+
 enum StatusAgendamento {
   agendado
   concluido

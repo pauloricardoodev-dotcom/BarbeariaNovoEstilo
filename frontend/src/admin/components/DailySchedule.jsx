@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MONTHS, WEEKDAYS } from '../../data/constants';
 import { nomeDoAgendamento } from '../api/agendamentos';
+import BloqueioDia, { FaixaDiaFechado } from './BloqueioDia';
 import PagamentoBadge from './PagamentoBadge';
 import StatusBadge from './StatusBadge';
 
@@ -17,7 +18,7 @@ const somarMinutos = (hora, minutos) => {
  * Agendamentos de um dia ('AAAA-MM-DD'), em ordem de horário.
  * "Feito" marca o atendimento como concluído e o cliente fica riscado na lista.
  */
-const DailySchedule = ({ date, appointments, concluindoId, onAppointmentClick, onCreateReservation, onFeito }) => {
+const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentClick, onCreateReservation, onFeito, onDiaAlterado }) => {
   // "Agora" fixado ao abrir; o servidor confere de novo (só conclui atendimento que já começou).
   const [agora] = useState(() => Date.now());
 
@@ -30,15 +31,24 @@ const DailySchedule = ({ date, appointments, concluindoId, onAppointmentClick, o
   const doDia = appointments
     .filter((a) => a.data === date)
     .sort((a, b) => a.hora.localeCompare(b.hora));
+  const ativos = doDia.filter((a) => a.status === 'agendado').length;
 
   return (
+    <>
     <div className="card">
       <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
         <h2 className="h5 mb-0 calendar-title">{formatDate(date)}</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => onCreateReservation(date)}>
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!!dia?.fechado}
+          title={dia?.fechado ? 'Dia fechado: desbloqueie o dia para criar uma reserva' : undefined}
+          onClick={() => onCreateReservation(date)}
+        >
           + Criar Reserva Manual
         </button>
       </div>
+
+      {dia?.fechado && <FaixaDiaFechado dia={dia} ativos={ativos} />}
 
       {doDia.length === 0 ? (
         <div className="card-body text-secondary fst-italic">Nenhum agendamento neste dia.</div>
@@ -101,6 +111,9 @@ const DailySchedule = ({ date, appointments, concluindoId, onAppointmentClick, o
         </div>
       )}
     </div>
+
+    <BloqueioDia key={date} data={date} dia={dia} ativos={ativos} onChanged={onDiaAlterado} />
+    </>
   );
 };
 

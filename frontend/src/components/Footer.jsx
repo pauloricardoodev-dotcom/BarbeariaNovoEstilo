@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import useIrParaSecao from '../utils/useIrParaSecao';
+import useConfiguracoes, { descreverDiasDeTrabalho, formatarHoraCurta } from '../configuracao/useConfiguracoes';
 
 const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
@@ -15,6 +16,8 @@ const Icon = ({ children }) => (
 
 const Footer = () => {
   const scrollToSection = useIrParaSecao();
+  const configuracoes = useConfiguracoes();
+  const diasDeTrabalho = descreverDiasDeTrabalho(configuracoes.diasTrabalho);
 
   return (
     <footer>
@@ -34,7 +37,7 @@ const Footer = () => {
                 </svg>
               </div>
               <div className="brand-text">
-                <b>Barbearia Novo Estilo</b>
+                <b>{configuracoes.nome}</b>
                 <small>BARBEARIA CLÁSSICA</small>
               </div>
             </a>
@@ -58,11 +61,11 @@ const Footer = () => {
             <ul className="info-list">
               <li>
                 <Icon><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0113 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.4" /></Icon>
-                <span>Rua das Palmeiras, 482<br />Batel — Curitiba, PR</span>
+                <span>{configuracoes.endereco}</span>
               </li>
               <li>
                 <Icon><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" /></Icon>
-                <a href="tel:+554130251187">(41) 3025-1187</a>
+                <a href={`tel:+55${configuracoes.telefone.replace(/\D/g, '')}`}>{configuracoes.telefone}</a>
               </li>
             </ul>
           </div>
@@ -72,7 +75,11 @@ const Footer = () => {
             <ul className="info-list">
               <li>
                 <Icon><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>
-                <span>Terça a sábado<br />09h às 19h</span>
+                <span>
+                  {diasDeTrabalho.charAt(0).toUpperCase() + diasDeTrabalho.slice(1)}<br />
+                  {formatarHoraCurta(configuracoes.manhaInicio)} às {formatarHoraCurta(configuracoes.manhaFim)} e{' '}
+                  {formatarHoraCurta(configuracoes.tardeInicio)} às {formatarHoraCurta(configuracoes.tardeFim)}
+                </span>
               </li>
               <li>
                 <Icon><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17" cy="7" r="0.6" fill="currentColor" /></Icon>
@@ -85,7 +92,7 @@ const Footer = () => {
         <div className="footer-bottom">
           <span>Elegância em cada detalhe.</span>
           <small>
-            © 2026 Barbearia Novo Estilo. Todos os direitos reservados. ·{' '}
+            © 2026 {configuracoes.nome}. Todos os direitos reservados. ·{' '}
             <Link to="/termos">Termos de uso</Link> · <Link to="/privacidade">Privacidade</Link>
           </small>
         </div>
