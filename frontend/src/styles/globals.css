@@ -333,28 +333,97 @@ nav.main-nav a:hover {
   display: block;
 }
 
-.mobile-nav {
-  display: none;
+/* Menu lateral (celular/tablet): abre pela direita sobre um fundo escurecido */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 901;
+  width: min(300px, 82vw);
+  display: flex;
   flex-direction: column;
   background: var(--navy);
-  border-bottom: 1px solid rgba(199, 204, 208, 0.3);
+  border-left: 1px solid rgba(199, 204, 208, 0.3);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.28s ease, visibility 0.28s ease;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.mobile-nav.open {
+.mobile-drawer.open {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.drawer-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 84px;
+  padding: 0 20px 0 24px;
+  border-bottom: 1px solid rgba(242, 242, 240, 0.12);
+  flex-shrink: 0;
 }
 
-.mobile-nav a {
-  padding: 16px 32px;
+.drawer-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  color: var(--cream);
+  font-size: 34px;
+  line-height: 1;
+  padding: 4px 10px;
+}
+
+.drawer-links {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.drawer-links a {
+  padding: 18px 24px;
   font-size: 15px;
   color: var(--cream);
   text-decoration: none;
-  border-top: 1px solid rgba(242, 242, 240, 0.12);
+  border-bottom: 1px solid rgba(242, 242, 240, 0.12);
   font-weight: 500;
 }
 
-.mobile-nav .btn {
-  margin: 16px 32px 20px;
+.drawer-links a:hover,
+.drawer-links a:focus-visible {
+  background: var(--navy-2, rgba(255, 255, 255, 0.06));
+  color: var(--gold);
+}
+
+.drawer-cta {
+  margin: 20px 24px 24px;
+  flex-shrink: 0;
 }
 
 /* ===== HERO ===== */
@@ -1226,6 +1295,46 @@ nav.main-nav a:hover {
   margin: 12px 0 18px;
 }
 
+.pix-copia {
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.pix-copia label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.pix-copia textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--cream);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+  color: var(--ink);
+}
+
+.pix-copia .btn {
+  align-self: flex-start;
+  padding: 12px 22px;
+}
+
+.pix-copia-indisponivel {
+  flex: 1 0 100%;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
 .card-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1284,6 +1393,10 @@ nav.main-nav a:hover {
   background: #D9BEC2;
   color: var(--white);
   opacity: 1;
+}
+
+.step-nav-confirmar {
+  display: none;
 }
 
 .step-nav .btn-ghost {
@@ -1631,18 +1744,66 @@ footer .info-list li {
     grid-template-columns: repeat(3, 1fr);
   }
 
+  /* Barra de ação flutuante: Voltar + Continuar ficam presos ao fim da tela enquanto o cliente rola o passo */
   .step-nav {
-    flex-direction: column-reverse;
-    gap: 14px;
-    align-items: stretch;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    flex-direction: row;
+    gap: 12px;
+    margin: 28px -18px -28px;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    background: var(--cream);
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.08);
   }
 
-  .step-nav .btn {
+  .step-nav > span:empty {
+    display: none;
+  }
+
+  .step-nav .step-nav-confirmar {
+    display: inline-flex;
+  }
+
+  .step-nav .btn-primary {
+    flex: 1;
+    padding: 15px 16px;
+  }
+
+  /* A ação do pagamento (Pagar / Confirmar) vai para a barra flutuante; o botão dentro do card some */
+  .pay-btn-card {
+    display: none;
+  }
+
+  .step-nav .btn-primary {
+    white-space: normal;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .pix-info {
     width: 100%;
+  }
+
+  .pix-copia .btn {
+    align-self: stretch;
+  }
+
+  .pix-info p {
+    margin-inline: auto;
+  }
+
+  .presencial-card {
+    padding: 24px 16px;
   }
 
   .pix-box {
     flex-direction: column;
+    padding: 20px 16px;
+    gap: 20px;
+    text-align: center;
   }
 
   .confirm-panel {

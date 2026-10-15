@@ -31,6 +31,11 @@ export interface ServicoResposta {
   ativo: boolean;
 }
 
+export interface ResultadoExclusao {
+  /** false = tem agendamentos no histórico; o serviço foi apenas inativado. */
+  excluido: boolean;
+}
+
 function paraResposta(s: LinhaServico): ServicoResposta {
   return { ...s, preco: s.preco.toNumber() };
 }
@@ -94,6 +99,26 @@ export class ServicosService {
       });
       return paraResposta(atualizado);
     } catch (erro) {
+      return this.traduzirErro(erro);
+    }
+  }
+
+  /**
+   * Exclui o serviço. A FK agendamentos → servicos é RESTRICT (a garantia é do banco): se já houve
+   * agendamento, não apaga e só inativa, para o histórico continuar íntegro.
+   */
+  async excluir(id: string): Promise<ResultadoExclusao> {
+    try {
+      await this.prisma.servico.delete({ where: { id } });
+      return { excluido: true };
+    } catch (erro) {
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2003'
+      ) {
+        await this.atualizar(id, { ativo: false });
+        return { excluido: false };
+      }
       return this.traduzirErro(erro);
     }
   }

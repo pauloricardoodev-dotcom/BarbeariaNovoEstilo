@@ -221,9 +221,34 @@
 }
 
 @media (max-width: 767.98px) {
+  /* Celular: sidebar mais estreita (recolhida só com ícones; aberta sobrepõe o conteúdo) */
+  :root {
+    --sidebar-width: 220px;
+    --sidebar-width-collapsed: 56px;
+  }
+
   .admin-main,
   .admin-main.sidebar-closed {
     margin-left: var(--sidebar-width-collapsed);
+  }
+
+  .admin-sidebar.collapsed .sidebar-header,
+  .admin-sidebar.collapsed .sidebar-footer {
+    padding: 0.5rem !important;
+  }
+
+  .admin-sidebar.collapsed .sidebar-header {
+    gap: 0.5rem !important;
+  }
+
+  .admin-sidebar:not(.collapsed) .sidebar-link {
+    padding-inline: 1rem;
+  }
+
+  /* Linhas bem marcadas entre um agendamento e outro */
+  .agenda-linha {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+    padding-block: 0.85rem;
   }
 }
 
@@ -602,7 +627,7 @@
 
 /* Agenda do dia em telas estreitas: o botão desce para a linha de baixo e o texto não estoura */
 .agenda-nome {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .agenda-info {
@@ -624,6 +649,18 @@
   justify-self: end;
 }
 
+.agenda-info-preco {
+  white-space: nowrap;
+}
+
+/* Aviso de cancelamento pedido: linha própria, para não espremer o texto */
+.agenda-info-aviso {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-self: start;
+  margin-top: 0.25rem;
+}
+
 /* Botão redondo de QR Code Pix, centralizado na altura das duas linhas */
 .agenda-pix {
   grid-column: 2;
@@ -641,41 +678,45 @@
   cursor: pointer;
 }
 
-/* Celular: valor e pagamento juntinhos no canto superior direito, QR no canto inferior direito */
+/* Celular: selo (pagamento/status) em cima do horário; sem valor; QR no canto inferior direito */
+.agenda-lateral {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
 @media (max-width: 767.98px) {
-  .agenda-info-nome,
-  .agenda-info-servico {
-    grid-column: 1;
-  }
-
-  .agenda-info-nome {
-    grid-row: 1;
-  }
-
-  .agenda-info-servico {
-    grid-row: 2;
-  }
-
-  .agenda-info-preco {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .agenda-info-selo {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
   .agenda-info {
+    grid-template-columns: minmax(0, 1fr) auto;
     column-gap: 0.4rem;
     align-items: start;
   }
 
+  .agenda-info-nome {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .agenda-info-servico {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
   .agenda-pix {
-    grid-column: 3;
+    grid-column: 2;
     grid-row: 2;
     justify-self: end;
     align-self: end;
+  }
+
+  .agenda-info-aviso {
+    grid-row: 3;
+  }
+
+  /* Largura fixa: o nome começa alinhado em todos os cards, seja Pix, Crédito ou Dinheiro */
+  .agenda-lateral {
+    flex: 0 0 4.6rem;
   }
 }
 
@@ -725,4 +766,69 @@
 
 .sidebar-link.active .sidebar-dot {
   border-color: var(--wine);
+}
+
+/* Serviços: a linha inteira abre a edição */
+.servico-linha {
+  cursor: pointer;
+}
+
+@media (max-width: 767.98px) {
+  .servico-linha td,
+  .servico-linha + tr td,
+  .table > thead th {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Sem a coluna Status no celular, o serviço inativo fica esmaecido */
+@media (max-width: 767.98px) {
+  .servico-inativo td:not(:last-child) {
+    opacity: 0.5;
+  }
+}
+
+/* Celular: os 7 dias cabem numa linha só (chips vermelho/cinza no lugar dos interruptores) e os campos de hora não estouram o card */
+@media (max-width: 575.98px) {
+  .dias-semana {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .dia-switch {
+    flex-direction: row;
+    justify-content: center;
+    padding: 0.5rem 0;
+    border-radius: 0.5rem;
+    background: #c4c7cc;
+  }
+
+  .dia-switch.ativo {
+    background: #dc3545;
+  }
+
+  .dia-switch-trilho {
+    display: none;
+  }
+
+  .dia-switch-nome {
+    font-size: 0.7rem;
+    color: #3d4045; /* folga: cinza com texto escuro, legível */
+  }
+
+  .dia-switch.ativo .dia-switch-nome {
+    color: #fff;
+  }
+
+  .horario-campo {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.5rem;
+  }
+
+  .horario-campo::-webkit-calendar-picker-indicator {
+    display: none;
+  }
 }

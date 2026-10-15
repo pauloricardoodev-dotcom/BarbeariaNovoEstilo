@@ -4,6 +4,8 @@ import { WEEKDAYS, MONTHS, STEP_LABELS } from '../data/constants';
 import { consultarDisponibilidade, criarAgendamento } from '../api/agendamentos';
 import { diaAgendavel, janelaDeAgendamento, separarPeriodos } from '../utils/datas';
 import ConfirmDialog from './ConfirmDialog';
+import PixCodigo, { PixQr } from './PixCodigo';
+import { gerarPayloadPix } from '../utils/pix';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone } from '../utils/telefone';
 import useConfiguracoes from '../configuracao/useConfiguracoes';
@@ -499,6 +501,8 @@ const Booking = ({ servicos, preSelectedService }) => {
 
   const renderPayment = () => {
     const amount = service ? formatPrice(service.price) : formatPrice(0);
+    // Pix real (BR Code com o valor) quando a chave do salão está configurada; senão, o QR ilustrativo.
+    const pixPayload = service ? gerarPayloadPix(service.price) : null;
 
     return (
       <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
@@ -539,14 +543,23 @@ const Booking = ({ servicos, preSelectedService }) => {
 
             <div className={`pay-panel ${payMethod === 'pix' ? 'active' : ''}`} style={{ display: payMethod === 'pix' ? 'block' : 'none' }}>
               <div className="pix-box">
-                <svg className="qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" dangerouslySetInnerHTML={{ __html: generateQRCode() }} />
+                {pixPayload ? (
+                  <PixQr payload={pixPayload} />
+                ) : (
+                  <svg className="qr" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" dangerouslySetInnerHTML={{ __html: generateQRCode() }} />
+                )}
                 <div className="pix-info">
                   <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
                   <div className="pix-amount">{amount}</div>
-                  <button className="btn btn-primary" disabled={enviando} onClick={() => confirmarAgendamento('pix')}>
+                  <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => confirmarAgendamento('pix')}>
                     {enviando ? 'Confirmando…' : 'Já realizei o pagamento'}
                   </button>
                 </div>
+                {pixPayload ? (
+                  <PixCodigo payload={pixPayload} />
+                ) : (
+                  <p className="pix-copia-indisponivel">Pix copia e cola indisponível no momento. Escolha outra forma de pagamento.</p>
+                )}
               </div>
             </div>
 
@@ -578,7 +591,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <span>Total a pagar</span>
                 <b>{amount}</b>
               </div>
-              <button className="btn btn-primary btn-block" style={{ marginTop: '22px' }} disabled={enviando} onClick={handleCardPayment}>
+              <button className="btn btn-primary btn-block pay-btn-card" style={{ marginTop: '22px' }} disabled={enviando} onClick={handleCardPayment}>
                 {enviando ? 'Confirmando…' : 'Pagar'}
               </button>
 
@@ -615,7 +628,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
                 <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
                 <div className="amt">{amount}</div>
-                <button className="btn btn-primary" disabled={enviando} onClick={() => confirmarAgendamento('presencial')}>
+                <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => confirmarAgendamento('presencial')}>
                   {enviando ? 'Confirmando…' : 'Confirmar agendamento'}
                 </button>
               </div>
@@ -627,7 +640,16 @@ const Booking = ({ servicos, preSelectedService }) => {
         </div>
         <div className="step-nav">
           <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
-          <span></span>
+          {/* Celular: a ação do método escolhido flutua na barra do rodapé (os botões dentro dos cards ficam ocultos). */}
+          <button
+            className="btn btn-primary step-nav-confirmar"
+            disabled={enviando}
+            onClick={() => (payMethod === 'cartao' ? handleCardPayment() : confirmarAgendamento(payMethod))}
+          >
+            {enviando
+              ? 'Confirmando…'
+              : { pix: 'Já realizei o pagamento', cartao: 'Pagar', presencial: 'Confirmar agendamento' }[payMethod]}
+          </button>
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-// Gestão de serviços no painel. Não há exclusão: "remover" é inativar (agendamentos antigos continuam válidos).
+// Gestão de serviços no painel. Excluir apaga de vez; se o serviço já teve agendamentos, o servidor só o inativa.
 import { request } from '../../api/http';
 
 const doApi = (s) => ({
@@ -25,3 +25,6 @@ export const criarServico = async (valores) =>
 
 export const atualizarServico = async (id, valores) =>
   doApi(await request(`/admin/servicos/${id}`, { method: 'PATCH', body: JSON.stringify(paraApi(valores)) }));
+
+/** Retorna `{ excluido }`: false quando tinha agendamentos e apenas foi inativado. */
+export const excluirServico = (id) => request(`/admin/servicos/${id}`, { method: 'DELETE' });

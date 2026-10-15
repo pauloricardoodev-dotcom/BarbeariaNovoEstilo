@@ -192,9 +192,9 @@ const SettingsTab = () => {
                 <div key={id} className="col-md-6">
                   <label className="form-label" htmlFor={`${id}-inicio`}>{titulo}</label>
                   <div className="d-flex align-items-center gap-2">
-                    <input id={`${id}-inicio`} type="time" className="form-control" value={form[inicio]} onChange={handleChange(inicio)} aria-label={`${titulo}: início`} />
+                    <input id={`${id}-inicio`} type="time" className="form-control horario-campo" value={form[inicio]} onChange={handleChange(inicio)} aria-label={`${titulo}: início`} />
                     <span className="text-secondary">até</span>
-                    <input id={`${id}-fim`} type="time" className="form-control" value={form[fim]} onChange={handleChange(fim)} aria-label={`${titulo}: fim`} />
+                    <input id={`${id}-fim`} type="time" className="form-control horario-campo" value={form[fim]} onChange={handleChange(fim)} aria-label={`${titulo}: fim`} />
                   </div>
                 </div>
               ))}

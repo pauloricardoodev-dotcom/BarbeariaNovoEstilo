@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { atualizarServico, criarServico, listarServicos } from '../api/servicos';
+import { atualizarServico, criarServico, excluirServico, listarServicos } from '../api/servicos';
 import AdminModal from './AdminModal';
 import PageHeader from './PageHeader';
 import StatusBadge from './StatusBadge';
@@ -10,6 +10,7 @@ const ServicesTab = () => {
   const [servicesList, setServicesList] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [modal, setModal] = useState(null); // null | 'create' | 'edit' | 'delete'
   const [selectedService, setSelectedService] = useState(null);
@@ -45,6 +46,7 @@ const ServicesTab = () => {
 
   const handleDelete = (service) => {
     setSelectedService(service);
+    setAviso('');
     setModal('delete');
   };
 
@@ -86,13 +88,19 @@ const ServicesTab = () => {
     }
   };
 
-  // Não apaga: serviços usados em agendamentos precisam continuar existindo. Só deixa de aparecer no site.
+  // Serviço que nunca foi agendado é apagado; com agendamentos o servidor só o inativa (histórico íntegro).
   const handleDeleteConfirm = async () => {
     setErro('');
     setSalvando(true);
     try {
-      const atualizado = await atualizarServico(selectedService.id, { status: 'inativo' });
-      setServicesList((lista) => lista.map((s) => (s.id === atualizado.id ? atualizado : s)));
+      const { excluido } = await excluirServico(selectedService.id);
+      if (excluido) {
+        setServicesList((lista) => lista.filter((s) => s.id !== selectedService.id));
+      } else {
+        // Já teve agendamentos: o servidor só inativou, para não perder o histórico.
+        setServicesList((lista) => lista.map((s) => (s.id === selectedService.id ? { ...s, status: 'inativo' } : s)));
+        setAviso(`"${selectedService.name}" tem agendamentos no histórico e não pode ser apagado; ele foi inativado e não aparece mais no site.`);
+      }
       handleCloseModal();
     } catch (err) {
       setErro(err.message);
@@ -112,6 +120,7 @@ const ServicesTab = () => {
       </PageHeader>
 
       {erro && !modal && <div className="alert alert-danger" role="alert">{erro}</div>}
+      {aviso && <div className="alert alert-warning" role="alert">{aviso}</div>}
       {carregando && <p className="text-secondary">Carregando serviços…</p>}
 
       <div className="card">
@@ -120,32 +129,36 @@ const ServicesTab = () => {
             <thead>
               <tr>
                 <th>Serviço</th>
-                <th>Descrição</th>
-                <th>Duração</th>
+                <th className="d-none d-md-table-cell">Descrição</th>
+                <th className="d-none d-md-table-cell">Duração</th>
                 <th>Preço</th>
-                <th>Status</th>
+                <th className="d-none d-md-table-cell">Status</th>
                 <th className="text-end">Ações</th>
               </tr>
             </thead>
             <tbody>
               {servicesList.map(service => (
-                <tr key={service.id}>
-                  <td className="fw-semibold">{service.name}</td>
-                  <td className="text-secondary small">{service.description}</td>
-                  <td>{service.duration} min</td>
-                  <td className="fw-semibold">R$ {service.price.toFixed(2)}</td>
-                  <td>
+                // Clicar na linha abre a edição (por isso o botão Editar some no celular).
+                <tr key={service.id} className={`servico-linha ${service.status === 'inativo' ? 'servico-inativo' : ''}`} onClick={() => handleEdit(service)}>
+                  <td className="fw-semibold">
+                    {service.name}
+                    <div className="small fw-normal text-secondary d-md-none">{service.duration} min</div>
+                  </td>
+                  <td className="text-secondary small d-none d-md-table-cell">{service.description}</td>
+                  <td className="d-none d-md-table-cell">{service.duration} min</td>
+                  <td className="fw-semibold text-nowrap">R$ {service.price.toFixed(2)}</td>
+                  <td className="d-none d-md-table-cell">
                     <StatusBadge
                       status={service.status === 'ativo' ? 'agendado' : 'cancelado'}
                       label={service.status === 'ativo' ? 'Ativo' : 'Inativo'}
                     />
                   </td>
                   <td className="text-end text-nowrap">
-                    <button className="btn btn-sm btn-outline-secondary me-2" onClick={() => handleEdit(service)}>
+                    <button className="btn btn-sm btn-outline-secondary me-2 d-none d-md-inline-block" onClick={(e) => { e.stopPropagation(); handleEdit(service); }}>
                       Editar
                     </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(service)}>
-                      Inativar
+                    <button className="btn btn-sm btn-outline-danger" onClick={(e) => { e.stopPropagation(); handleDelete(service); }}>
+                      Excluir
                     </button>
                   </td>
                 </tr>
@@ -228,18 +241,18 @@ const ServicesTab = () => {
 
       {modal === 'delete' && (
         <AdminModal
-          title="Inativar este serviço?"
+          title="Excluir este serviço?"
           onClose={handleCloseModal}
           showClose={false}
           footer={
             <>
               <button className="btn btn-outline-secondary" onClick={handleCloseModal}>Voltar</button>
-              <button className="btn btn-primary" onClick={handleDeleteConfirm} disabled={salvando}>Confirmar</button>
+              <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={salvando}>Excluir</button>
             </>
           }
         >
           {erro && <div className="alert alert-danger" role="alert">{erro}</div>}
-          <p className="mb-0">Ele deixará de aparecer no site para novos agendamentos. Agendamentos já feitos não são afetados, e você pode reativá-lo depois em Editar.</p>
+          <p className="mb-0">"{selectedService?.name}" será apagado de vez. Se já tiver agendamentos no histórico, ele não pode ser apagado: nesse caso será apenas inativado (some do site, e você pode reativá-lo em Editar).</p>
         </AdminModal>
       )}
     </div>

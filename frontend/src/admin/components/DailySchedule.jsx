@@ -8,8 +8,8 @@ import StatusBadge from './StatusBadge';
 
 const pad = (n) => String(n).padStart(2, '0');
 
-/** Só as duas primeiras palavras do nome: "Paulo Ricardo da Silva" -> "Paulo Ricardo". */
-const abreviarNome = (nome) => nome.trim().split(/\s+/).slice(0, 2).join(' ');
+/** Primeiras palavras do nome: "Paulo Ricardo da Silva" -> "Paulo Ricardo" (no celular, só "Paulo"). */
+const abreviarNome = (nome, palavras = 2) => nome.trim().split(/\s+/).slice(0, palavras).join(' ');
 
 /** 'HH:mm' + minutos -> 'HH:mm' (o expediente nunca passa da meia-noite). */
 const somarMinutos = (hora, minutos) => {
@@ -63,6 +63,8 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
           {doDia.map((a) => {
             const jaComecou = new Date(a.inicio).getTime() <= agora;
             const concluido = a.status === 'concluido';
+            // Agendado mostra a forma de pagamento; concluído e cancelado seguem mostrando o status.
+            const selo = a.status === 'agendado' ? <PagamentoBadge pagamento={a.pagamento} /> : <StatusBadge status={a.status} />;
             return (
               <div
                 key={a.id}
@@ -70,14 +72,19 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
               >
                 <button
                   type="button"
-                  className="agenda-linha-principal d-flex align-items-start gap-3"
+                  className="agenda-linha-principal d-flex align-items-start gap-2 gap-md-3"
                   onClick={() => onAppointmentClick(a)}
                 >
-                  <span className="time-slot fw-semibold">{a.hora}</span>
+                  <span className="agenda-lateral">
+                    {/* Celular: o selo de pagamento/status fica em cima do horário. */}
+                    <span className="d-md-none agenda-lateral-selo">{selo}</span>
+                    <span className="time-slot fw-semibold">{a.hora}</span>
+                  </span>
                   {/* Grade: texto à esquerda, botão Pix centralizado na altura do card, selo e valor à direita. */}
                   <div className="flex-grow-1 agenda-info">
                     <span className="fw-semibold agenda-texto agenda-nome agenda-info-nome">
-                      {abreviarNome(nomeDoAgendamento(a))}
+                      <span className="d-none d-md-inline">{abreviarNome(nomeDoAgendamento(a))}</span>
+                      <span className="d-md-none">{abreviarNome(nomeDoAgendamento(a), 1)}</span>
                       {!a.cliente && <span className="text-secondary fw-normal"> · reserva manual</span>}
                     </span>
                     {a.status === 'agendado' && a.pagamento === 'presencial' && (
@@ -105,21 +112,17 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
                         </svg>
                       </span>
                     )}
-                    <span className="d-flex flex-wrap gap-2 align-items-center justify-content-end agenda-info-selo">
-                      {a.solicitacaoPendente && (
-                        <span className="badge rounded-pill text-bg-warning">Cancelamento solicitado</span>
-                      )}
-                      {/* Agendado mostra a forma de pagamento; concluído e cancelado seguem mostrando o status. */}
-                      {a.status === 'agendado' ? <PagamentoBadge pagamento={a.pagamento} /> : <StatusBadge status={a.status} />}
-                    </span>
+                    <span className="d-none d-md-flex flex-wrap gap-2 align-items-center justify-content-end agenda-info-selo">{selo}</span>
                     <span className="agenda-texto small agenda-info-servico">
-                      {a.servico.nome} ·{' '}
+                      {a.servico.nome}
                       <span className="d-none d-md-inline">
-                        {a.hora}–{somarMinutos(a.hora, a.duracaoMinutos)} ({a.duracaoMinutos} min)
+                        {' '}· {a.hora}–{somarMinutos(a.hora, a.duracaoMinutos)} ({a.duracaoMinutos} min)
                       </span>
-                      <span className="d-md-none">até {somarMinutos(a.hora, a.duracaoMinutos)}</span>
                     </span>
-                    <span className="fw-semibold small agenda-info-preco">R$ {a.preco.toFixed(2)}</span>
+                    <span className="d-none d-md-inline fw-semibold small agenda-info-preco">R$ {a.preco.toFixed(2)}</span>
+                    {a.solicitacaoPendente && (
+                      <span className="badge rounded-pill text-bg-warning agenda-info-aviso">Cancelamento solicitado</span>
+                    )}
                   </div>
                 </button>
                 {a.status === 'agendado' && (

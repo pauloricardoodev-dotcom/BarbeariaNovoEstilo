@@ -10,6 +10,9 @@ import { configurarApp } from '../src/configurar-app.js';
 import { Prisma } from '../src/generated/prisma/client.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
+/** Ids que "já têm agendamentos": o banco recusa a exclusão (FK RESTRICT). */
+const COM_HISTORICO = new Set<string>();
+
 interface ServicoFake {
   id: string;
   nome: string;
@@ -82,6 +85,12 @@ describe('Serviços (e2e)', () => {
           servicos.push(novo);
           return Promise.resolve(comoLinha(novo));
         },
+        delete: ({ where }: { where: { id: string } }) => {
+          const i = servicos.findIndex((s) => s.id === where.id);
+          if (i < 0) return Promise.reject(erroPrisma('P2025'));
+          if (COM_HISTORICO.has(where.id)) return Promise.reject(erroPrisma('P2003'));
+          return Promise.resolve(comoLinha(servicos.splice(i, 1)[0]));
+        },
         update: ({
           where,
           data,
@@ -123,6 +132,7 @@ describe('Serviços (e2e)', () => {
   beforeEach(() => {
     servicos = [];
     seq = 0;
+    COM_HISTORICO.clear();
   });
 
   async function logar(): Promise<string> {
@@ -194,6 +204,39 @@ describe('Serviços (e2e)', () => {
       // Inativo some do catálogo público.
       const publico = await request(app.getHttpServer()).get('/api/servicos').expect(200);
       expect(publico.body).toEqual([]);
+    });
+
+    it('exclui de vez o serviço sem agendamentos', async () => {
+      const cookie = await logar();
+      servicos.push({ id: '00000000-0000-4000-8000-0000000000aa', nome: 'Corte', descricao: null, preco: 50, duracaoMinutos: 45, ativo: true });
+      const res = await request(app.getHttpServer())
+        .delete('/api/admin/servicos/00000000-0000-4000-8000-0000000000aa')
+        .set('Cookie', cookie)
+        .expect(200);
+      expect(res.body).toEqual({ excluido: true });
+      expect(servicos).toHaveLength(0);
+    });
+
+    it('com agendamentos no histórico não exclui: só inativa', async () => {
+      const cookie = await logar();
+      const id = '00000000-0000-4000-8000-0000000000bb';
+      servicos.push({ id, nome: 'Corte', descricao: null, preco: 50, duracaoMinutos: 45, ativo: true });
+      COM_HISTORICO.add(id);
+      const res = await request(app.getHttpServer())
+        .delete(`/api/admin/servicos/${id}`)
+        .set('Cookie', cookie)
+        .expect(200);
+      expect(res.body).toEqual({ excluido: false });
+      expect(servicos).toEqual([expect.objectContaining({ id, ativo: false })]);
+    });
+
+    it('excluir serviço inexistente dá 404 e exige sessão', async () => {
+      await request(app.getHttpServer()).delete(`/api/admin/servicos/${ID_INEXISTENTE}`).expect(401);
+      const cookie = await logar();
+      await request(app.getHttpServer())
+        .delete(`/api/admin/servicos/${ID_INEXISTENTE}`)
+        .set('Cookie', cookie)
+        .expect(404);
     });
 
     it.each([

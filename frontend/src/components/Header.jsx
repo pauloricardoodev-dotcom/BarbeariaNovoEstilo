@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router';
 import { useSessaoCliente } from '../sessao/sessaoCliente';
 import useIrParaSecao from '../utils/useIrParaSecao';
@@ -18,6 +19,23 @@ const Header = () => {
   const { status, cliente } = useSessaoCliente();
   const { pathname } = useLocation();
 
+  // Menu lateral (celular): Esc fecha, a página atrás não rola e ele fecha sozinho ao passar para a tela larga.
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined;
+    const aoTeclar = (e) => e.key === 'Escape' && setMobileNavOpen(false);
+    const larga = window.matchMedia('(min-width: 1200px)');
+    const aoMudarLargura = () => larga.matches && setMobileNavOpen(false);
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', aoTeclar);
+    larga.addEventListener('change', aoMudarLargura);
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener('keydown', aoTeclar);
+      larga.removeEventListener('change', aoMudarLargura);
+    };
+  }, [mobileNavOpen]);
+
   const scrollToSection = (e, sectionId) => {
     irParaSecao(e, sectionId);
     setMobileNavOpen(false);
@@ -31,6 +49,7 @@ const Header = () => {
   const mostrarEntrar = !logado && status !== 'carregando' && pathname !== '/entrar';
 
   return (
+    <>
     <header>
       <div className="container header-inner">
         <a href="/#inicio" className="brand" onClick={(e) => scrollToSection(e, 'inicio')}>
@@ -95,6 +114,7 @@ const Header = () => {
               <button
                 className="menu-toggle d-xl-none"
                 aria-label="Abrir menu"
+                aria-haspopup="dialog"
                 aria-expanded={mobileNavOpen}
                 onClick={() => setMobileNavOpen(!mobileNavOpen)}
               >
@@ -107,33 +127,45 @@ const Header = () => {
         </div>
       </div>
 
-      {logado && (
-        <div className={`mobile-nav d-xl-none ${mobileNavOpen ? 'open' : ''}`}>
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.id}
-              href={`/#${link.id}`}
-              onClick={(e) => scrollToSection(e, link.id)}
-            >
-              {link.label}
-            </a>
-          ))}
-          <Link to="/meus-agendamentos" onClick={() => setMobileNavOpen(false)}>
-            Meus agendamentos
-          </Link>
-          <Link to="/minha-conta" onClick={() => setMobileNavOpen(false)}>
-            Minha conta
-          </Link>
-          <a
-            href="/#agendamento"
-            className="btn btn-primary"
-            onClick={(e) => scrollToSection(e, 'agendamento')}
-          >
-            Agendar horário
-          </a>
-        </div>
-      )}
     </header>
+
+    {/* Portal no body: o header tem backdrop-filter e prenderia o menu fixo dentro dele. */}
+    {logado &&
+      createPortal(
+        <div className="d-xl-none">
+          <div className={`drawer-backdrop ${mobileNavOpen ? 'open' : ''}`} onClick={() => setMobileNavOpen(false)} />
+          <aside
+            className={`mobile-drawer ${mobileNavOpen ? 'open' : ''}`}
+            aria-hidden={!mobileNavOpen}
+            aria-label="Menu"
+          >
+            <div className="drawer-head">
+              <span className="drawer-title">Menu</span>
+              <button type="button" className="drawer-close" aria-label="Fechar menu" onClick={() => setMobileNavOpen(false)}>
+                ×
+              </button>
+            </div>
+            <nav className="drawer-links">
+              {NAV_LINKS.map((link) => (
+                <a key={link.id} href={`/#${link.id}`} onClick={(e) => scrollToSection(e, link.id)}>
+                  {link.label}
+                </a>
+              ))}
+              <Link to="/meus-agendamentos" onClick={() => setMobileNavOpen(false)}>
+                Meus agendamentos
+              </Link>
+              <Link to="/minha-conta" onClick={() => setMobileNavOpen(false)}>
+                Minha conta
+              </Link>
+            </nav>
+            <a href="/#agendamento" className="btn btn-primary drawer-cta" onClick={(e) => scrollToSection(e, 'agendamento')}>
+              Agendar horário
+            </a>
+          </aside>
+        </div>,
+        document.body,
+      )}
+    </>
   );
 };
 
