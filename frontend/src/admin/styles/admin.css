@@ -605,6 +605,87 @@
   overflow-wrap: anywhere;
 }
 
+.agenda-info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.15rem;
+}
+
+.agenda-info-nome,
+.agenda-info-servico {
+  grid-column: 1;
+}
+
+.agenda-info-selo,
+.agenda-info-preco {
+  grid-column: 3;
+  justify-self: end;
+}
+
+/* Botão redondo de QR Code Pix, centralizado na altura das duas linhas */
+.agenda-pix {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid #000;
+  border-radius: 50%;
+  color: #000;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Celular: valor e pagamento juntinhos no canto superior direito, QR no canto inferior direito */
+@media (max-width: 767.98px) {
+  .agenda-info-nome,
+  .agenda-info-servico {
+    grid-column: 1;
+  }
+
+  .agenda-info-nome {
+    grid-row: 1;
+  }
+
+  .agenda-info-servico {
+    grid-row: 2;
+  }
+
+  .agenda-info-preco {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .agenda-info-selo {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .agenda-info {
+    column-gap: 0.4rem;
+    align-items: start;
+  }
+
+  .agenda-pix {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    align-self: end;
+  }
+}
+
+.agenda-pix:hover,
+.agenda-pix:focus-visible {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: #fff;
+}
+
 .agenda-concluir {
   flex: 0 0 auto;
 }

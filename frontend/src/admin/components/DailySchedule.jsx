@@ -3,9 +3,13 @@ import { MONTHS, WEEKDAYS } from '../../data/constants';
 import { nomeDoAgendamento } from '../api/agendamentos';
 import BloqueioDia, { FaixaDiaFechado } from './BloqueioDia';
 import PagamentoBadge from './PagamentoBadge';
+import PixCobrancaModal from './PixCobrancaModal';
 import StatusBadge from './StatusBadge';
 
 const pad = (n) => String(n).padStart(2, '0');
+
+/** Só as duas primeiras palavras do nome: "Paulo Ricardo da Silva" -> "Paulo Ricardo". */
+const abreviarNome = (nome) => nome.trim().split(/\s+/).slice(0, 2).join(' ');
 
 /** 'HH:mm' + minutos -> 'HH:mm' (o expediente nunca passa da meia-noite). */
 const somarMinutos = (hora, minutos) => {
@@ -21,6 +25,8 @@ const somarMinutos = (hora, minutos) => {
 const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentClick, onCreateReservation, onFeito, onDiaAlterado }) => {
   // "Agora" fixado ao abrir; o servidor confere de novo (só conclui atendimento que já começou).
   const [agora] = useState(() => Date.now());
+  // Agendamento em dinheiro cujo cliente decidiu pagar com Pix no salão.
+  const [cobrandoPix, setCobrandoPix] = useState(null);
 
   const formatDate = (chave) => {
     const [ano, mes, dia] = chave.split('-').map(Number);
@@ -68,30 +74,52 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
                   onClick={() => onAppointmentClick(a)}
                 >
                   <span className="time-slot fw-semibold">{a.hora}</span>
-                  <div className="flex-grow-1">
-                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                      <span className="fw-semibold agenda-texto agenda-nome">
-                        {nomeDoAgendamento(a)}
-                        {!a.cliente && <span className="text-secondary fw-normal"> · reserva manual</span>}
+                  {/* Grade: texto à esquerda, botão Pix centralizado na altura do card, selo e valor à direita. */}
+                  <div className="flex-grow-1 agenda-info">
+                    <span className="fw-semibold agenda-texto agenda-nome agenda-info-nome">
+                      {abreviarNome(nomeDoAgendamento(a))}
+                      {!a.cliente && <span className="text-secondary fw-normal"> · reserva manual</span>}
+                    </span>
+                    {a.status === 'agendado' && a.pagamento === 'presencial' && (
+                      // span (e não button): já estamos dentro do botão que abre o agendamento.
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="agenda-pix"
+                        title="Cliente quer pagar com Pix? Gerar QR Code"
+                        aria-label="Gerar QR Code Pix"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCobrandoPix(a);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCobrandoPix(a);
+                          }
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden='true'>
+                          <path d="M2 2h5v5H2V2zm1 1v3h3V3H3zm6-1h5v5H9V2zm1 1v3h3V3h-3zM2 9h5v5H2V9zm1 1v3h3v-3H3zm6 0h2v2H9v-2zm3 0h2v2h-2v-2zm-3 3h2v1H9v-1zm3 0h2v1h-2v-1z" />
+                        </svg>
                       </span>
-                      <span className="d-flex flex-wrap gap-2 align-items-center">
-                        {a.solicitacaoPendente && (
-                          <span className="badge rounded-pill text-bg-warning">Cancelamento solicitado</span>
-                        )}
-                        {/* Agendado mostra a forma de pagamento; concluído e cancelado seguem mostrando o status. */}
-                        {a.status === 'agendado' ? (
-                          <PagamentoBadge pagamento={a.pagamento} />
-                        ) : (
-                          <StatusBadge status={a.status} />
-                        )}
+                    )}
+                    <span className="d-flex flex-wrap gap-2 align-items-center justify-content-end agenda-info-selo">
+                      {a.solicitacaoPendente && (
+                        <span className="badge rounded-pill text-bg-warning">Cancelamento solicitado</span>
+                      )}
+                      {/* Agendado mostra a forma de pagamento; concluído e cancelado seguem mostrando o status. */}
+                      {a.status === 'agendado' ? <PagamentoBadge pagamento={a.pagamento} /> : <StatusBadge status={a.status} />}
+                    </span>
+                    <span className="agenda-texto small agenda-info-servico">
+                      {a.servico.nome} ·{' '}
+                      <span className="d-none d-md-inline">
+                        {a.hora}–{somarMinutos(a.hora, a.duracaoMinutos)} ({a.duracaoMinutos} min)
                       </span>
-                    </div>
-                    <div className="d-flex flex-wrap justify-content-between column-gap-3 small">
-                      <span className="agenda-texto">
-                        {a.servico.nome} · {a.hora}–{somarMinutos(a.hora, a.duracaoMinutos)} ({a.duracaoMinutos} min)
-                      </span>
-                      <span className="fw-semibold">R$ {a.preco.toFixed(2)}</span>
-                    </div>
+                      <span className="d-md-none">até {somarMinutos(a.hora, a.duracaoMinutos)}</span>
+                    </span>
+                    <span className="fw-semibold small agenda-info-preco">R$ {a.preco.toFixed(2)}</span>
                   </div>
                 </button>
                 {a.status === 'agendado' && (
@@ -111,6 +139,8 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
         </div>
       )}
     </div>
+
+    {cobrandoPix && <PixCobrancaModal agendamento={cobrandoPix} onClose={() => setCobrandoPix(null)} />}
 
     <BloqueioDia key={date} data={date} dia={dia} ativos={ativos} onChanged={onDiaAlterado} />
     </>
