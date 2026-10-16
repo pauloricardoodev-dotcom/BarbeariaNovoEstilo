@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { apagarMinhaAvaliacao, enviarAvaliacao, listarAvaliacoes, minhaAvaliacao } from '../api/avaliacoes';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
+import { GOOGLE_AVALIACAO_URL } from '../data/constants';
 import { reduzirFoto } from '../utils/reduzirFoto';
 import { Estrelas, SeletorEstrelas } from './Estrelas';
 
@@ -39,6 +40,47 @@ const formatarMedia = (media) => media.toFixed(1).replace('.', ',');
 const formatarData = (iso) => {
   const texto = new Date(iso).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   return texto.charAt(0).toUpperCase() + texto.slice(1); // "outubro de 2026" -> "Outubro de 2026"
+};
+
+/** Pedido para avaliar também no Google, mostrado logo depois que o cliente envia a avaliação no site. */
+const PedidoGoogle = ({ aberto, onFechar }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const dialogo = ref.current;
+    if (!dialogo) return;
+    if (aberto && !dialogo.open) dialogo.showModal();
+    if (!aberto && dialogo.open) dialogo.close();
+  }, [aberto]);
+
+  return (
+    <dialog
+      ref={ref}
+      className="avaliacao-google"
+      aria-labelledby="avaliacao-google-titulo"
+      onClose={() => !ref.current?.open && onFechar()}
+      onClick={(e) => e.target === ref.current && onFechar()}
+    >
+      <div className="avaliacao-google-corpo">
+        <span className="avaliacao-google-icone" aria-hidden="true">★</span>
+        <h3 id="avaliacao-google-titulo">Obrigado pela sua avaliação!</h3>
+        <p>Quer nos avaliar também no Google? Leva menos de um minuto e ajuda muito a barbearia.</p>
+        <div className="avaliacao-google-acoes">
+          <a
+            className="btn btn-primary"
+            href={GOOGLE_AVALIACAO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onFechar}
+          >
+            Sim, avaliar no Google
+          </a>
+          <button type="button" className="btn btn-outline" onClick={onFechar}>
+            Agora não
+          </button>
+        </div>
+      </div>
+    </dialog>
+  );
 };
 
 /** Foto ampliada (dialog nativo: Esc e clique fora fecham, o foco volta para quem abriu). */
@@ -406,6 +448,7 @@ const Reviews = () => {
   const [erroLista, setErroLista] = useState('');
   const [minha, setMinha] = useState(undefined); // undefined = ainda não sabemos; null = não avaliou
   const [fotoAberta, setFotoAberta] = useState(null);
+  const [pedidoGoogle, setPedidoGoogle] = useState(false);
   const areaRef = useRef(null);
 
   const carregarPrimeira = useCallback(
@@ -437,6 +480,7 @@ const Reviews = () => {
 
   const aoEnviar = (criada) => {
     setMinha(criada);
+    setPedidoGoogle(true);
     carregarPrimeira();
   };
 
@@ -540,6 +584,7 @@ const Reviews = () => {
         onAbrirFoto={setFotoAberta}
       />
       <FotoAmpliada url={fotoAberta} onFechar={() => setFotoAberta(null)} />
+      <PedidoGoogle aberto={pedidoGoogle} onFechar={() => setPedidoGoogle(false)} />
     </section>
   );
 };

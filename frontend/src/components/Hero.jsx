@@ -50,7 +50,7 @@ const Hero = () => {
             <div className="col-12 col-lg-7 col-xl-6 hero-copy">
               <div className="eyebrow">
                 <span className="eyebrow-rule"></span>
-                <span>Desde 2011 · Curitiba</span>
+                <span>Desde 2002 · Curitiba</span>
               </div>
               <h1>Seu estilo.<br />Seu momento.</h1>
               <p className="sub">Cortes clássicos.<br />Precisão moderna.</p>

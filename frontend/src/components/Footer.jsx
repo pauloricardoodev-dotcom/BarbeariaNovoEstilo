@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { id: 'sobre', label: 'Sobre' },
   { id: 'agendamento', label: 'Agendar' },
   { id: 'avaliacoes', label: 'Avaliações' },
+  { id: 'mapa', label: 'Localização' },
 ];
 
 const Icon = ({ children }) => (

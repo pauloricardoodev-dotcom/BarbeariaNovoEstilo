@@ -4,6 +4,7 @@ import Hero from '../components/Hero';
 import Booking from '../components/Booking';
 import About from '../components/About';
 import Reviews from '../components/Reviews';
+import Mapa from '../components/Mapa';
 import useServicos from '../hooks/useServicos';
 
 function HomePage() {
@@ -21,6 +22,7 @@ function HomePage() {
       <About />
       <Booking servicos={servicos} />
       <Reviews />
+      <Mapa />
     </>
   );
 }

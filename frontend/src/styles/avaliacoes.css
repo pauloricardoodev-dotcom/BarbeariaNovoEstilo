@@ -309,6 +309,76 @@
   overscroll-behavior: contain;
 }
 
+/* Pedido para avaliar também no Google */
+.avaliacao-google {
+  width: min(92vw, 440px);
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--navy);
+  color: var(--white);
+  overflow: hidden;
+  border-top: 3px solid var(--gold);
+}
+
+.avaliacao-google::backdrop {
+  background: rgba(10, 10, 12, 0.78);
+}
+
+.avaliacao-google-corpo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 34px 28px 28px;
+  text-align: center;
+}
+
+.avaliacao-google-icone {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--wine);
+}
+
+.avaliacao-google h3 {
+  color: var(--white);
+  font-size: 24px;
+}
+
+.avaliacao-google p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+}
+
+.avaliacao-google-acoes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.avaliacao-google .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.avaliacao-google .btn-outline {
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.avaliacao-google .btn-outline:hover {
+  background: var(--white);
+  color: var(--navy);
+}
+
+.avaliacao-google .btn:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+}
+
 /* Foto ampliada */
 .avaliacao-zoom {
   padding: 0;

@@ -1497,23 +1497,44 @@ nav.main-nav a:hover {
   align-items: center;
 }
 
+/* Seção levemente mais larga que o container padrão em telas grandes */
+@media (min-width: 1240px) {
+  .about-grid {
+    margin-inline: calc((100% - min(1300px, 100vw - 64px)) / 2);
+  }
+}
+
 .about-art {
   background: var(--navy);
   aspect-ratio: 4/3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 14px;
+  overflow: hidden;
   position: relative;
 }
 
+.about-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Linha dourada fina sobre a foto, acompanhando a borda preta */
 .about-art .fr {
   position: absolute;
-  inset: 16px;
-  border: 1px solid rgba(176, 141, 87, 0.45);
+  inset: 26px;
+  border: 1px solid var(--gold);
+  pointer-events: none;
+}
+
+/* Título e texto no mesmo padrão do .section-head das demais seções */
+.about-copy h2 {
+  font-size: 38px;
+  line-height: 1.15;
 }
 
 .about-copy .sub {
-  margin-top: 20px;
+  margin-top: 16px;
   font-size: 16px;
   max-width: 480px;
 }
@@ -1714,7 +1735,8 @@ footer .info-list li {
     padding: 64px 0;
   }
 
-  .section-head h2 {
+  .section-head h2,
+  .about-copy h2 {
     font-size: 28px;
   }
 
@@ -1826,4 +1848,64 @@ footer .info-list li {
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* Seção Mapa (localização) */
+.mapa-caixa {
+  position: relative;
+  width: 100%;
+  height: clamp(300px, 36vw, 460px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.mapa-caixa iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.mapa-rodape {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-top: 18px;
+}
+
+.mapa-endereco {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+/* Seção Mapa: fundo preto, texto claro e linha dourada embaixo separando do rodapé */
+#mapa {
+  border-bottom: 1px solid var(--gold);
+}
+
+#mapa .section-head h2 {
+  color: var(--cream);
+}
+
+#mapa .section-head p,
+#mapa .mapa-endereco {
+  color: rgba(242, 242, 240, 0.72);
+}
+
+#mapa .mapa-caixa {
+  border-color: rgba(242, 242, 240, 0.14);
+}
+
+#mapa .btn-outline {
+  color: var(--white);
+  border-color: var(--white);
+}
+
+#mapa .btn-outline:hover {
+  background: var(--white);
+  color: var(--navy);
 }

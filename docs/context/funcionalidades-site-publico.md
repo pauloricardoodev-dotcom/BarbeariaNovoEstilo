@@ -4,13 +4,13 @@ Home (`pages/HomePage.jsx`) com âncoras, na ordem da página: `#inicio` (Hero),
 
 ## Header (`Header.jsx`)
 - Logo (emblema SVG) + "Barbearia Novo Estilo" / "BARBEARIA CLÁSSICA".
-- Nav: Início, Sobre, Agendar, Avaliações (desktop; `d-none d-lg-flex`). *(O briefing pede também "Profissionais" — não existe ainda.)*
+- Nav: Início, Sobre, Agendar, Avaliações, Localização (desktop; `d-none d-lg-flex`). *(O briefing pede também "Profissionais" — não existe ainda.)*
 - Botão CTA "Agendar horário" (desktop) e botão hambúrguer com menu mobile (`mobileNavOpen`, fecha ao navegar).
 - "Entrar" (anônimo) ou "Olá, Nome" → `/minha-conta` (logado); nada enquanto a sessão carrega.
 
 ## Hero (`Hero.jsx`)
 - Título/subtítulo, CTAs "Agendar horário" (→ `#agendamento`) e "Nossa história" (→ `#sobre`).
-- Estatísticas `HERO_STATS`: 13+ anos, 3 especialistas, 4.9 avaliação. Imagem `public/assets/hero-corte.jpg` (foto do cliente, espelhada; o `hero.jpg` antigo ficou sem uso). Em telas até 575,98 px o hero usa `min-height: min(320px, calc(100vh - 84px))`.
+- Estatísticas `HERO_STATS`: 24+ anos (desde 2002), 3 especialistas, 4.9 avaliação. Imagem `public/assets/hero-corte.jpg` (foto do cliente, espelhada; o `hero.jpg` antigo ficou sem uso). Em telas até 575,98 px o hero usa `min-height: min(320px, calc(100vh - 84px))`.
 
 ## Agendamento (`Booking.jsx`) — 3 passos + confirmação
 Barra de progresso com `STEP_LABELS` (Serviço, Data e horário, Pagamento) + passo 4 de confirmação. Sem etapa de dados: nome/celular/e-mail vêm do perfil (login obrigatório).
@@ -21,16 +21,20 @@ Barra de progresso com `STEP_LABELS` (Serviço, Data e horário, Pagamento) + pa
 4. **Confirmação** — resumo, botão **baixar .ics** (evento de calendário com duração do serviço e endereço), botão de recomeçar (`resetFlow`, volta ao topo). Toast temporário de feedback (`showToastMessage`, 2,6 s).
 
 ## Sobre (`About.jsx`) — fica logo depois do hero
-Arte SVG + texto "Nossa história" + marcos: 13 anos, 3 especialistas, 6 serviços (os dois últimos números estão fixos e errados: ver plano, Fase 7). Fundo **claro** (cream), para alternar com o hero e o agendamento, que são escuros.
+Container levemente mais largo (1300 px) a partir de 1240 px; título no mesmo tamanho dos `.section-head`. Foto `public/assets/hero-atendimento.jpg` (barbearia em atendimento, no lugar da antiga arte SVG, com moldura preta e linha dourada fina por cima) + texto "Nossa história" + marcos: 24 anos, 3 especialistas, 6 serviços (os dois últimos números estão fixos e errados: ver plano, Fase 7). Fundo **claro** (cream), para alternar com o hero e o agendamento, que são escuros.
 
 ## Avaliações (`Reviews.jsx`, `#avaliacoes`) — depois do agendamento
 - Cabeçalho: "AVALIAÇÕES" / "Sua experiência importa." / "Cada visita conta uma história. Compartilhe a sua com a gente." Seção com menos respiro vertical que as outras (72 px; 56 px no celular).
 - Indicadores (média com 1 casa e total) **só aparecem com 3 avaliações ou mais** (`MIN_INDICADORES` em `Reviews.jsx`). Cartões (estrelas, comentário, **só o primeiro nome**, mês/ano, até 3 fotos); comentários longos quebram dentro do cartão. A seção mostra **4 avaliações** (as mais recentes, em grade que se ajusta à largura: 2 colunas quando cabe, 1 no celular) e o botão **"Ver todas as avaliações (N)"** (aparece quando há mais de 4) abre uma **janela** (`<dialog>` modal, 2 colunas, 12 por página com "Carregar mais"): fundo escurecido, a página atrás não rola, rolagem só dentro da janela, Esc / clique fora / × fecham, a foto ampliada abre por cima e o Esc fecha só ela.
 - Cores: **todos os cards da seção são pretos** (`--navy`) com o conteúdo em branco, mesmo com a seção em fundo branco: cartões de avaliação, cartão da média, "Seja o primeiro a avaliar", formulário, "Sua avaliação" e os avisos de login/verificação (a janela "Ver todas" é branca com cartões pretos). **Estrelas em vinho/vermelho** (`--wine`) em toda a seção; estrelas vazias do seletor em branco translúcido. Avisos de erro dentro de card preto ficam em painel branco, o botão de contorno fica branco e o foco usa contorno branco (o vinho some no preto). As regras ficam no bloco "Cards escuros" no fim de `avaliacoes.css`.
 - **Estado vazio** (sem avaliações publicadas): painel com ícone, "Seja o primeiro a avaliar", o texto de convite e o botão vinho "ESCREVER AVALIAÇÃO", que rola suavemente até o formulário (sem animação se o sistema pede menos movimento) e foca a primeira estrela (ou o botão de entrar/confirmar conta). Nenhuma avaliação de exemplo é exibida.
+- **Pedido do Google:** logo depois de enviar a avaliação abre uma janela (`PedidoGoogle`, `<dialog>`) "Quer nos avaliar também no Google?" com "Sim, avaliar no Google" (abre `GOOGLE_AVALIACAO_URL` em nova aba, em `data/constants.js`, trocável por `VITE_GOOGLE_AVALIACAO_URL`) e "Agora não".
 - **Formulário** "Conte como foi sua experiência": painel marfim sempre visível, em uma coluna. **No desktop (≥ 1000 px) fica à ESQUERDA das avaliações** (formulário | avaliações); abaixo disso a lista vem primeiro e o formulário embaixo. A partir de 1240 px os containers (formulário + avaliações) ficam **mais largos que o texto da seção** (até 1360 px; o cabeçalho continua alinhado como nas demais seções). No celular campos e botões ocupam a largura toda e as estrelas têm alvo de toque de 44 px (nota escolhida fica marcada, com hover e foco visíveis).
 - **Publica na hora**; o dono pode ocultar no painel. Qualquer cliente **logado e verificado** (e-mail + WhatsApp, a mesma regra de agendar) avalia, **uma avaliação ativa por cliente**: nota 1–5 (seletor de estrelas acessível), comentário (até 600) e até 3 fotos (JPG/PNG/WebP; o navegador reduz a foto antes de enviar — `utils/reduzirFoto.js`). O cliente vê "Sua avaliação" e pode **apagar** (some do site e as fotos são apagadas de vez); depois pode escrever outra.
 - Backend: `GET /api/avaliacoes` e `GET /api/avaliacoes/fotos/:id` (públicos), `GET/POST/DELETE /api/clientes/me/avaliacao`, `GET /api/admin/avaliacoes`, `PATCH /api/admin/avaliacoes/:id`, `GET /api/admin/avaliacoes/fotos/:id`. Fotos: o servidor valida pelo **conteúdo**, regrava como WebP (máx. 1600 px) e **descarta os metadados (EXIF/GPS)**; ficam em bucket **privado** (Supabase Storage) e só saem pela nossa API (foto de avaliação oculta ou apagada dá 404). Sem login: "Entrar para avaliar".
+
+## Mapa (`Mapa.jsx`, `#mapa`) — depois das avaliações
+Seção "Localização / Venha nos visitar." com o Google Maps embutido (iframe sem chave de API) no endereço das configurações (o mesmo do rodapé, editável no admin), o endereço em texto e o botão "Abrir no Google Maps". Fundo preto (navy) com linha dourada embaixo separando do rodapé.
 
 ## Footer (`Footer.jsx`)
 Marca, descrição, links de navegação, nome, endereço, telefone (`tel:`) e funcionamento (dias de trabalho + horário, ex.: "Segunda a sábado, 8h às 12h e 14h às 18h") **vindos das Configurações do painel** (`GET /api/configuracoes`, hook `configuracao/useConfiguracoes.js`, com valores de fábrica enquanto carrega); Instagram `@barbearianovoestilo` fixo. Rodapé com links para `/termos` e `/privacidade`.
