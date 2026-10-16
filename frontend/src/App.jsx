@@ -19,6 +19,7 @@ import PrivacidadePage from './pages/PrivacidadePage';
 import './styles/globals.css';
 import './styles/conta.css';
 import './styles/entrar.css';
+import './styles/avaliacoes.css';
 
 // Casco do site: CSS, sessão do cliente, Header/Footer e rotas.
 // Login obrigatório: só entrar/cadastro/recuperação de senha/termos abrem sem sessão.

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router';
 import Hero from '../components/Hero';
 import Booking from '../components/Booking';
 import About from '../components/About';
+import Reviews from '../components/Reviews';
 import useServicos from '../hooks/useServicos';
 
 function HomePage() {
@@ -19,6 +20,7 @@ function HomePage() {
       <Hero />
       <About />
       <Booking servicos={servicos} />
+      <Reviews />
     </>
   );
 }

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router';
 import useCelular from '../hooks/useCelular';
 import AdminSidebar from './components/AdminSidebar';
 import AgendaTab from './components/AgendaTab';
+import AvaliacoesTab from './components/AvaliacoesTab';
 import DashboardTab from './components/DashboardTab';
 import NotificacoesTab from './components/NotificacoesTab';
 import useNotificacoes from './hooks/useNotificacoes';
@@ -53,6 +54,7 @@ const AdminPanel = ({ user, onLogout }) => {
             />
             <Route path="dashboard" element={<DashboardTab />} />
             <Route path="servicos" element={<ServicesTab />} />
+            <Route path="avaliacoes" element={<AvaliacoesTab />} />
             <Route path="configuracoes" element={<SettingsTab />} />
             <Route path="*" element={<Navigate to="agenda" replace />} />
           </Routes>

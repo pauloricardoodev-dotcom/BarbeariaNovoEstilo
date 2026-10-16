@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { path: '/admin/notificacoes', icon: 'sino', label: 'Notificações', indicador: true },
   { path: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { path: '/admin/servicos', icon: 'servicos', label: 'Serviços' },
+  { path: '/admin/avaliacoes', icon: 'estrela', label: 'Avaliações' },
   { path: '/admin/configuracoes', icon: 'configuracoes', label: 'Configurações' },
 ];
 

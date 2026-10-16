@@ -61,6 +61,7 @@ model Cliente {
   updatedAt            DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
   tokens               TokenCliente[]
   agendamentos         Agendamento[]
+  avaliacoes           Avaliacao[]
 
   @@map("clientes")
 }
@@ -243,4 +244,36 @@ model SolicitacaoCancelamento {
   @@index([status, createdAt])
   @@index([agendamentoId])
   @@map("solicitacoes_cancelamento")
+}
+
+/// Avaliação do cliente (nota + comentário + até 3 fotos), exibida no site assim que enviada.
+/// Uma ativa por cliente (índice único parcial na migration); `publicada` é o "ocultar" do painel;
+/// `removidaEm` é a exclusão feita pelo próprio cliente (apaga as fotos). Ver migration 20261016130000_avaliacoes.
+model Avaliacao {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clienteId  String          @map("cliente_id") @db.Uuid
+  nota       Int             @db.SmallInt
+  comentario String
+  publicada  Boolean         @default(true)
+  removidaEm DateTime?       @map("removida_em") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_avaliacoes_updated_at.
+  updatedAt  DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  cliente    Cliente         @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  fotos      AvaliacaoFoto[]
+
+  @@map("avaliacoes")
+}
+
+/// Fotos de uma avaliação (posição 1 a 3). O arquivo fica no armazenamento (Supabase Storage); aqui só o caminho.
+model AvaliacaoFoto {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  avaliacaoId String    @map("avaliacao_id") @db.Uuid
+  posicao     Int       @db.SmallInt
+  caminho     String    @unique
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  avaliacao   Avaliacao @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+
+  @@unique([avaliacaoId, posicao])
+  @@map("avaliacao_fotos")
 }

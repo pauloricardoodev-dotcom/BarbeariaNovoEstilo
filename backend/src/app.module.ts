@@ -6,6 +6,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AgendamentosModule } from './agendamentos/agendamentos.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { AvaliacoesModule } from './avaliacoes/avaliacoes.module.js';
 import { ClientesModule } from './clientes/clientes.module.js';
 import { ConfiguracoesModule } from './configuracoes/configuracoes.module.js';
 import { DiasModule } from './dias/dias.module.js';
@@ -27,6 +28,7 @@ import { ServicosModule } from './servicos/servicos.module.js';
     DiasModule,
     ServicosModule,
     AgendamentosModule,
+    AvaliacoesModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

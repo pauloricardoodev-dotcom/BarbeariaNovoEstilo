@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
   { id: 'sobre', label: 'Sobre' },
   { id: 'agendamento', label: 'Agendar' },
+  { id: 'avaliacoes', label: 'Avaliações' },
 ];
 
 const Header = () => {

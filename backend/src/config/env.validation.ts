@@ -1,5 +1,6 @@
 export type ProvedorEmail = 'log' | 'resend';
 export type ProvedorWhatsApp = 'log' | 'cloud_api';
+export type ProvedorArmazenamento = 'local' | 'supabase';
 
 export interface Env {
   DATABASE_URL: string;
@@ -24,6 +25,12 @@ export interface Env {
   WHATSAPP_TEMPLATE_REAGENDAMENTO: string;
   WHATSAPP_TEMPLATE_IDIOMA: string;
   WHATSAPP_API_VERSAO: string;
+  /** Onde ficam as fotos das avaliações: disco local (dev) ou Supabase Storage (produção). */
+  ARMAZENAMENTO_PROVEDOR: ProvedorArmazenamento;
+  SUPABASE_URL: string;
+  /** Só no backend, nunca no frontend. */
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_BUCKET_AVALIACOES: string;
 }
 
 function texto(valor: unknown, padrao = ''): string {
@@ -94,6 +101,19 @@ export function validarEnv(config: Record<string, unknown>): Env {
     );
   }
 
+  const armazenamentoProvedor = texto(config.ARMAZENAMENTO_PROVEDOR, 'local');
+  const supabaseUrl = texto(config.SUPABASE_URL).replace(/\/+$/, '');
+  const supabaseChave = texto(config.SUPABASE_SERVICE_ROLE_KEY);
+  if (armazenamentoProvedor !== 'local' && armazenamentoProvedor !== 'supabase') {
+    erros.push('ARMAZENAMENTO_PROVEDOR deve ser "local" ou "supabase".');
+  } else if (armazenamentoProvedor === 'supabase') {
+    if (!/^https:\/\/\S+$/.test(supabaseUrl) || !supabaseChave) {
+      erros.push(
+        'ARMAZENAMENTO_PROVEDOR=supabase exige SUPABASE_URL (https://…) e SUPABASE_SERVICE_ROLE_KEY.',
+      );
+    }
+  }
+
   if (erros.length > 0) {
     throw new Error(`Configuração inválida:\n- ${erros.join('\n- ')}`);
   }
@@ -122,5 +142,9 @@ export function validarEnv(config: Record<string, unknown>): Env {
     WHATSAPP_TEMPLATE_REAGENDAMENTO: texto(config.WHATSAPP_TEMPLATE_REAGENDAMENTO),
     WHATSAPP_TEMPLATE_IDIOMA: texto(config.WHATSAPP_TEMPLATE_IDIOMA, 'pt_BR'),
     WHATSAPP_API_VERSAO: texto(config.WHATSAPP_API_VERSAO, 'v23.0'),
+    ARMAZENAMENTO_PROVEDOR: armazenamentoProvedor as ProvedorArmazenamento,
+    SUPABASE_URL: supabaseUrl,
+    SUPABASE_SERVICE_ROLE_KEY: supabaseChave,
+    SUPABASE_BUCKET_AVALIACOES: texto(config.SUPABASE_BUCKET_AVALIACOES, 'avaliacoes'),
   };
 }

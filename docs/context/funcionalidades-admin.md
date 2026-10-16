@@ -17,6 +17,9 @@ Acesso: `/admin` (abas em `/admin/agenda`, `/admin/dashboard`, `/admin/servicos`
 ## Aba Serviços (`ServicesTab.jsx`)
 **Ligada à API** (`admin/api/servicos.js` → `GET/POST /api/admin/servicos`, `PATCH`/`DELETE /api/admin/servicos/:id`): listar (inclusive inativos), **adicionar**, **editar** (no celular basta tocar na linha; sem coluna Descrição/Status/botão Editar, inativos esmaecidos) e **excluir** (botão Excluir + confirmação): apaga de vez o serviço que nunca foi agendado; se já tem agendamentos (FK `RESTRICT`, o histórico não pode perder o serviço) o servidor só o **inativa** (`{ excluido: false }`) e a tela avisa — reativar = Editar → status Ativo. Campos: nome* (único, sem diferenciar maiúsculas), descrição, preço* (até 2 casas), duração (5–480 min)*, status. Erros do servidor (ex.: nome repetido) aparecem no modal. Depende das migrations `20261013120000_servicos` e `20261013130000_servicos_iniciais` (seed dos 6 serviços placeholder) aplicadas. A `AgendaTab` ainda usa os serviços do mock (Fase 6).
 
+## Aba Avaliações (`AvaliacoesTab.jsx`, `/admin/avaliacoes`)
+Lista as avaliações dos clientes (estrelas, comentário, nome e e-mail do cliente, data, fotos em tamanho real ao clicar), com filtro Todas / Visíveis no site / Ocultas e paginação. **Ocultar** tira do site (a foto também deixa de ser pública) e **Mostrar de novo** devolve; não há exclusão pelo painel. As avaliações apagadas pelo próprio cliente não aparecem.
+
 ## Aba Profissionais — REMOVIDA do painel (menu e rota), a pedido do cliente; ele quer de volta no futuro. `ProfessionalsTab.jsx` continua no repositório, sem rota (para reativar: rota em `AdminPanel.jsx` + item em `AdminSidebar.jsx`). Descrição da tela antiga:
 CRUD em memória: listar, adicionar, editar, remover (confirmação). Campos: nome*, cargo*, iniciais* (auto-sugeridas a partir do nome via `handleNameChange`), status.
 

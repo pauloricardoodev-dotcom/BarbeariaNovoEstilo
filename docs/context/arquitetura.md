@@ -19,8 +19,8 @@ Cada área é carregada sob demanda (`React.lazy`) e traz o próprio CSS; os doi
 ```
 AppRoutes.jsx           rotas (/admin/*, /*) com lazy loading
 App.jsx                 casco do site: CSS, SessaoClienteProvider, Header/Footer e rotas
-pages/                  HomePage (Hero, Services, Booking, About; guarda preSelectedService) e telas de conta
-components/             site público (Header, Hero, Services, Booking, About, Footer)
+pages/                  HomePage (Hero, About, Booking, Reviews) e telas de conta
+components/             site público (Header, Hero, About, Booking, Reviews, Footer)
 components/conta/       Campo/CampoSenha, ContaLayout/Alerta, ExigeCliente
 api/http.js             fetch para /api + ApiError (usado pelo site e pelo admin)
 api/clientes.js         chamadas de /api/clientes/*

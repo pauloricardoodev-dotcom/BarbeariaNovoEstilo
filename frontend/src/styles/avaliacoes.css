@@ -1,0 +1,803 @@
+/* ===== AVALIAÇÕES (site) =====
+   Seção #avaliacoes (components/Reviews.jsx): cartões com estrelas, comentário e fotos, e o formulário do cliente. */
+
+.estrelas {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--wine);
+  line-height: 0;
+}
+
+.estrela {
+  width: var(--tam, 18px);
+  height: var(--tam, 18px);
+  display: block;
+}
+
+/* A seção usa menos respiro vertical que as demais (o padrão do site é 96 px). */
+#avaliacoes.section {
+  padding: 72px 0 80px;
+}
+
+.avaliacoes-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px 32px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.avaliacoes-topo .section-head {
+  margin-bottom: 0;
+}
+
+.avaliacoes-resumo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.avaliacoes-resumo > b {
+  font-family: var(--serif);
+  font-size: 52px;
+  line-height: 1;
+  color: var(--navy);
+}
+
+.avaliacoes-resumo div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avaliacoes-resumo > div > span:last-child {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.avaliacoes-vazio {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 36px 32px 34px;
+  text-align: center;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: 16px;
+}
+
+.avaliacoes-vazio-icone {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 4px;
+  color: var(--gold);
+  border: 1px solid rgba(176, 141, 87, 0.5);
+  border-radius: 50%;
+  background: rgba(176, 141, 87, 0.08);
+}
+
+.avaliacoes-vazio h3 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.avaliacoes-vazio p {
+  max-width: 440px;
+  margin: 0 0 12px;
+  font-size: 15.5px;
+}
+
+.avaliacoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+  gap: 24px;
+}
+
+/* Na janela de "todas" cabem 2 colunas mais largas. */
+.avaliacoes-grid-modal {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+}
+
+.avaliacao-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px 24px 22px;
+  background: var(--navy);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 3px solid var(--gold);
+  border-radius: 14px;
+}
+
+.avaliacao-card-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.avaliacao-card-topo time {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+/* Dentro do cartão preto: textos, nome e data em branco. (A avaliação do próprio cliente fica no painel marfim e mantém as cores escuras.) */
+.avaliacao-card .avaliacao-texto,
+.avaliacao-card .avaliacao-autor {
+  color: var(--white);
+}
+
+.avaliacao-card .avaliacao-card-topo time {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.avaliacao-card .avaliacao-foto {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.avaliacao-card .avaliacao-avatar {
+  background: var(--white);
+  color: var(--navy);
+}
+
+.avaliacao-texto {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.avaliacao-fotos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.avaliacao-foto {
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--cream-2);
+  cursor: zoom-in;
+}
+
+.avaliacao-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+}
+
+.avaliacao-foto:hover img {
+  transform: scale(1.06);
+}
+
+.avaliacao-foto:focus-visible,
+.avaliacao-adicionar:focus-visible,
+.seletor-estrela:focus-visible,
+.avaliacao-previa button:focus-visible,
+.avaliacao-zoom-fechar:focus-visible {
+  outline: 2px solid var(--wine);
+  outline-offset: 2px;
+}
+
+.avaliacao-autor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 14px;
+}
+
+.avaliacao-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--gold-2);
+  font-family: var(--serif);
+  font-weight: 700;
+}
+
+.avaliacoes-mais {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+/* Janela "Ver todas as avaliações" */
+.avaliacoes-modal {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  padding: 24px;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.avaliacoes-modal::backdrop {
+  background: rgba(10, 10, 12, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.avaliacoes-modal-caixa {
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  max-height: 100%;
+  margin: 0 auto;
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.avaliacoes-modal-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.avaliacoes-modal-topo h3 {
+  margin: 0 0 6px;
+  font-size: 26px;
+}
+
+.avaliacoes-modal-resumo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.avaliacoes-modal-fechar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.avaliacoes-modal-fechar:hover {
+  border-color: var(--wine);
+  color: var(--wine);
+}
+
+.avaliacoes-modal-fechar:focus-visible {
+  outline: 2px solid var(--wine);
+  outline-offset: 2px;
+}
+
+.avaliacoes-modal-corpo {
+  padding: 24px 28px 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Foto ampliada */
+.avaliacao-zoom {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: min(94vw, 1100px);
+  max-height: 92vh;
+  overflow: visible;
+}
+
+.avaliacao-zoom::backdrop {
+  background: rgba(10, 10, 12, 0.88);
+}
+
+.avaliacao-zoom img {
+  display: block;
+  max-width: 100%;
+  max-height: 88vh;
+  margin: 0 auto;
+  border-radius: 10px;
+}
+
+.avaliacao-zoom-fechar {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Formulário (à esquerda) e avaliações (à direita) no desktop; empilhados abaixo de 1000 px (lista primeiro). */
+.avaliacoes-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+
+@media (min-width: 1000px) {
+  .avaliacoes-layout {
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
+
+  .avaliacao-area {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .avaliacoes-lista {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  /* Sem avaliações: o painel "Seja o primeiro a avaliar" fica centralizado na altura do formulário ao lado. */
+  .avaliacoes-lista:has(> .avaliacoes-vazio) {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+/* Em telas largas os containers (formulário + avaliações) passam da largura do texto da seção,
+   que continua alinhado como as demais seções. Sai igualmente dos dois lados do conteúdo. */
+@media (min-width: 1240px) {
+  .avaliacoes-layout {
+    margin-inline: calc((100% - min(1360px, 100vw - 64px)) / 2);
+  }
+}
+
+/* Formulário / sua avaliação */
+.avaliacao-area {
+  max-width: 640px;
+}
+
+@media (min-width: 1000px) {
+  .avaliacao-area {
+    max-width: none;
+  }
+}
+
+.avaliacao-form {
+  width: 100%;
+  padding: 28px 26px 26px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.avaliacao-form h3 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.avaliacao-form-sub {
+  margin: 0 0 22px;
+  font-size: 15px;
+}
+
+.avaliacao-form-grade .avaliacao-form-sub {
+  margin-bottom: 22px;
+}
+
+.avaliacao-form-dir .btn {
+  margin-top: 4px;
+}
+
+.avaliacao-textarea {
+  min-height: 110px;
+}
+
+.avaliacao-privacidade {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.avaliacao-privacidade::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.avaliacao-form .field {
+  margin-bottom: 20px;
+}
+
+.avaliacao-textarea {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  font-size: 15px;
+  font-family: var(--sans);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.avaliacao-textarea:focus-visible {
+  outline: none;
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(155, 38, 53, 0.16);
+}
+
+.avaliacao-contador {
+  text-align: right;
+}
+
+.avaliacao-minha .avaliacao-card-topo {
+  margin-bottom: 12px;
+}
+
+.avaliacao-minha .avaliacao-texto {
+  margin-bottom: 14px;
+}
+
+.avaliacao-minha .avaliacao-fotos {
+  margin-bottom: 18px;
+}
+
+.avaliacao-confirma {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 14.5px;
+}
+
+.avaliacao-confirma span {
+  flex-basis: 100%;
+}
+
+/* Seletor de estrelas */
+.seletor-estrelas {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.seletor-estrelas-grupo {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.seletor-estrela {
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(18, 18, 20, 0.28);
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.seletor-estrela.ativa {
+  color: var(--wine);
+}
+
+/* A nota escolhida fica marcada mesmo sem o mouse por perto. */
+.seletor-estrela[aria-checked='true'] {
+  background: rgba(155, 38, 53, 0.1);
+}
+
+.seletor-estrela:hover:not(:disabled) {
+  transform: scale(1.12);
+  color: var(--wine);
+}
+
+.seletor-estrela:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.seletor-estrela:focus-visible {
+  background: rgba(155, 38, 53, 0.08);
+}
+
+.seletor-estrelas-rotulo {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* Fotos escolhidas */
+.avaliacao-previas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.avaliacao-previa {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+
+.avaliacao-previa img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.avaliacao-previa button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.avaliacao-adicionar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 96px;
+  height: 96px;
+  border: 1.5px dashed rgba(18, 18, 20, 0.35);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.avaliacao-adicionar span:first-child {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.avaliacao-adicionar:hover:not(:disabled) {
+  border-color: var(--wine);
+  color: var(--wine);
+}
+
+@media (max-width: 639.98px) {
+  .avaliacoes-modal {
+    padding: 12px;
+  }
+
+  .avaliacoes-modal-topo {
+    padding: 18px 16px 14px;
+  }
+
+  .avaliacoes-modal-topo h3 {
+    font-size: 22px;
+  }
+
+  .avaliacoes-modal-corpo {
+    padding: 16px 16px 20px;
+  }
+
+  #avaliacoes.section {
+    padding: 56px 0 64px;
+  }
+
+  .avaliacoes-grid {
+    gap: 16px;
+  }
+
+  .avaliacoes-resumo {
+    width: 100%;
+  }
+
+  .avaliacoes-vazio {
+    padding: 28px 20px 26px;
+  }
+
+  .avaliacao-form {
+    padding: 24px 16px 22px;
+  }
+
+  /* Campos e botões ocupam a largura toda, sem margens extras. */
+  .avaliacao-form .btn,
+  .avaliacoes-vazio .btn,
+  .avaliacoes-mais .btn {
+    width: 100%;
+  }
+
+  .seletor-estrelas {
+    gap: 8px;
+  }
+
+  .avaliacao-previas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .avaliacao-previa,
+  .avaliacao-adicionar {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+}
+
+/* ===== Cards escuros =====
+   Todos os cards da seção (avaliações, média, "Seja o primeiro a avaliar", formulário, "Sua avaliação" e os
+   avisos de login) são pretos com o conteúdo em branco, mesmo com a seção em fundo branco. As estrelas ficam
+   vermelhas (--wine). Este bloco vem depois das regras base de propósito: sobrescreve as cores claras. */
+.avaliacoes-resumo,
+.avaliacoes-vazio,
+.avaliacao-form {
+  background: var(--navy);
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.avaliacoes-resumo > b,
+.avaliacoes-vazio h3,
+.avaliacao-form h3,
+.avaliacao-form .field label,
+.avaliacao-form .avaliacao-texto {
+  color: var(--white);
+}
+
+.avaliacoes-resumo > div > span:last-child,
+.avaliacoes-vazio p,
+.avaliacao-form-sub,
+.avaliacao-form .field-hint,
+.avaliacao-contador,
+.seletor-estrelas-rotulo,
+.avaliacao-form .avaliacao-card-topo time {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.avaliacao-confirma {
+  color: var(--white);
+}
+
+/* Estrelas do seletor: vazias em branco translúcido, escolhidas em vermelho. */
+.seletor-estrela {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.seletor-estrela[aria-checked='true'] {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.avaliacao-form .avaliacao-foto,
+.avaliacao-previa img {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.avaliacao-form .avaliacao-foto {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Botão de contorno (apagar avaliação): claro sobre o preto. */
+.avaliacao-form .btn-outline {
+  color: var(--white);
+  border-color: var(--white);
+}
+
+.avaliacao-form .btn-outline:hover {
+  background: var(--white);
+  color: var(--navy);
+}
+
+/* Avisos dentro do card preto ficam em painel claro para continuarem legíveis. */
+.avaliacao-form .conta-alerta {
+  background: var(--white);
+}
+
+.avaliacao-form .conta-alerta-erro {
+  color: var(--wine-2);
+  border-color: var(--wine);
+}
+
+/* Foco visível sobre o preto (o vinho some no fundo escuro). */
+.avaliacao-form .seletor-estrela:focus-visible,
+.avaliacao-form .avaliacao-adicionar:focus-visible,
+.avaliacao-form .avaliacao-previa button:focus-visible,
+.avaliacao-form .avaliacao-foto:focus-visible,
+.avaliacao-form .btn:focus-visible,
+.avaliacoes-vazio .btn:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+}
+
+.avaliacao-form .seletor-estrela:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Campo de texto e botão de anexo: pretos, com contorno claro para se destacarem do cartão. */
+.avaliacao-form .avaliacao-textarea,
+.avaliacao-form .avaliacao-adicionar {
+  background: #000;
+  color: var(--white);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.avaliacao-form .avaliacao-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.avaliacao-form .avaliacao-adicionar {
+  border-style: dashed;
+  border-width: 1.5px;
+}
+
+.avaliacao-form .avaliacao-adicionar:hover:not(:disabled) {
+  border-color: var(--white);
+  color: var(--white);
+}
+
+.avaliacao-form .avaliacao-previa button {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.avaliacao-form .avaliacao-textarea:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avaliacao-foto img,
+  .seletor-estrela {
+    transition: none;
+  }
+}
