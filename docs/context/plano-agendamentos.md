@@ -65,6 +65,23 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 - [x] Alertas "Deseja cadastrar o cartão?" / confirmação sem cadastrar (front).
 - [ ] Integrar gateway (ex.: Mercado Pago): tokenização no navegador; salvar no perfil só token + bandeira + 4 últimos dígitos; cartão salvo pré-selecionado nos próximos agendamentos; remover cartão em "Minha conta".
 
+## Fase 7 — Galeria "Nosso trabalho" no lugar de "Nossos serviços" (site) — planejada, não iniciada
+Motivo: os serviços já aparecem no passo 1 do agendamento; a seção "Nossos serviços" repete a informação.
+- [ ] Substituir a seção `Services` por um **carrossel de fotos de cortes** (deslizar no celular, setas/bolinhas no computador, avança sozinho e pausa ao tocar; carrega só a foto da vez) + botão "Agendar horário". O **mini vídeo de apresentação** (capa com botão de play, sem autoplay com som, baixa o vídeo só ao dar play) é **opcional**: se o cliente não quiser gravar um vídeo profissional, ele é substituído pela seção "Sobre a barbearia" abaixo.
+- [ ] Menu (Header/Footer): link "Serviços" vira "Galeria"/"Nosso trabalho" (`NAV_LINKS`, `useIrParaSecao`).
+- [ ] Decidir o destino do atalho "Agendar" por serviço (hoje pré-seleciona o serviço no passo 1): manter como faixa pequena de serviços acima do agendamento ou remover.
+- [ ] **Alternativa ao vídeo — seção "Sobre a barbearia"**: uma **foto à esquerda** e um **texto sobre a barbearia à direita** (no celular, foto em cima e texto embaixo). **Já existe a seção "Sobre"** (`About.jsx`, `#sobre`, fundo escuro) com esse mesmo desenho, mas com uma ilustração SVG no lugar da foto: o trabalho é **trocar a ilustração por uma foto real e reescrever o texto**, não criar uma seção nova (evita duas seções "sobre" na página). Revisar também os números fixos dela ("13 anos", "3 especialistas", "6 serviços"): o produto tem um único barbeiro (ver `decisoes.md`) e os serviços agora variam no painel, então "3 especialistas" e "6 serviços" estão errados e devem ser corrigidos ou removidos. Precisa do texto e da foto do cliente.
+- [ ] Pendente de decisão: fotos e vídeo como arquivos fixos em `frontend/public/assets/` (simples; troca pelo código) ou enviados pelo painel (exige armazenamento de imagens e gestão no admin — bem maior). Vídeo: MP4 próprio curto (até ~10 MB) ou link do YouTube/Instagram. Montar primeiro com imagens provisórias.
+
+## Fase 8 — Seção de avaliações (site) — planejada, não iniciada
+Posição na página: **depois da seção de agendamento** (ordem: início → galeria → agendamento → **avaliações** → sobre → rodapé).
+- [ ] Seção "O que dizem nossos clientes": nota média + quantidade e cartões com nome (primeiro nome), nota (1–5 estrelas), comentário e data; carrossel/grade responsiva.
+- [ ] Os números fixos de `HERO_STATS` (ex.: "4.9 avaliação") passam a vir das avaliações reais, ou saem do hero até existirem avaliações.
+- [ ] Backend (proposta): tabela `avaliacoes` (agendamento_id único, cliente_id, nota 1–5 por CHECK, comentário, `publicada`, created_at; RLS + `REVOKE`), `GET /avaliacoes` público (só publicadas, sem dado pessoal além do primeiro nome) e criação só por cliente logado, **só para agendamento próprio com status concluído**, uma avaliação por agendamento.
+- [ ] Cliente: convite para avaliar em "Meus agendamentos" depois do atendimento concluído (o lembrete por WhatsApp fica para "Depois do MVP").
+- [ ] Admin: nova aba para **moderar** (publicar/ocultar; sem excluir, para manter o histórico) e ver a média.
+- [ ] Pendente de decisão: publicar na hora ou só após aprovação do dono; permitir resposta do dono; se haverá avaliações iniciais cadastradas à mão enquanto não há clientes avaliando (devem ser identificadas como reais; nada de depoimento inventado).
+
 ## Depois do MVP
 - ~~Avisar o cliente quando a solicitação de cancelamento for decidida~~ e ~~quando o barbeiro reagenda~~ — **feitos** (WhatsApp; dependem dos templates da Meta). Reagendamento do cliente notifica o barbeiro em Notificações (migration `20261013150000_reagendamentos_notificacao`, sem aprovação). Falta: avisar quando o barbeiro cancela direto um agendamento sem pedido; avisos por e-mail.
 - Lembretes de agendamento via WhatsApp.
