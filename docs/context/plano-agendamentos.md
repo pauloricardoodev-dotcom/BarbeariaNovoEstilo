@@ -15,14 +15,15 @@ Regras de clientes/contas: [spec-clientes-e-contas.md](spec-clientes-e-contas.md
 - Externo (pendente, pode correr em paralelo): conta Meta Business + template de autenticação aprovado; provedor de e-mail com domínio verificado.
 
 ## Fase 2 — Login com Google (backend)
-- [ ] Validação do ID token com `google-auth-library`, vínculo por `google_sub`/e-mail verificado.
-- [ ] Fluxo de "cadastro pendente" pedindo telefone + aceite dos termos.
-- Externo: OAuth Client no Google Cloud.
+- [x] Validação do ID token com `google-auth-library` (`clientes/google.ts`), vínculo por `google_sub`/e-mail. Se o e-mail do cadastro nunca foi verificado, o vínculo descarta a senha e derruba as sessões (impede que quem cadastrou o e-mail de outra pessoa continue com acesso).
+- [x] Fluxo de "cadastro pendente" pedindo telefone + aceite dos termos: `POST /api/clientes/auth/google` (devolve `{status:'autenticado',cliente}` ou `{status:'cadastro_pendente',nome,email,tokenPendente}`) e `POST /api/clientes/auth/google/completar` (`tokenPendente`, `telefone`, `aceiteTermos`). Sem migration nova. `tokenPendente` = JWT de 10 min com audiência própria; nenhuma linha no banco até completar.
+- [x] Testes: `clientes/google.spec.ts` (unit) e bloco `google` em `test/clientes.db-spec.ts` (14 casos, validação do token mockada). Rodados em 2026-10-16: tsc, lint, `npm test`, `test:e2e` e o bloco `google` do `test:db` passando.
+- [x] Externo: OAuth Client (Web) criado no Google Cloud; `GOOGLE_CLIENT_ID` no `backend/.env` e `VITE_GOOGLE_CLIENT_ID` no `frontend/.env`. **Falta** publicar o app (Público-alvo → Em produção) e adicionar o domínio de produção às origens autorizadas antes de abrir para clientes.
 
 ## Fase 3 — Contas no frontend (feita antes da Fase 2, sem o Google)
 - [x] Telas de cadastro, login, "esqueci minha senha", redefinir senha, com `autocomplete` correto para o navegador salvar a senha.
 - [x] Telas de verificação: código do e-mail e código do WhatsApp (com reenviar).
-- [ ] (aguarda Fase 2) Botão "Entrar com Google" (Google Identity Services) + tela de completar cadastro (telefone).
+- [x] Botão "Entrar com Google" (Google Identity Services) em `/entrar` e `/cadastro` + etapa "Quase lá" (telefone + termos) e "Minha conta" adaptada a conta só-Google (a API passou a expor `temSenha` em `ClienteAutenticado`). Build e lint do front ok; **falta o teste manual no navegador com uma conta Google real** (o front não tem testes automatizados).
 - [x] Páginas `/termos` e `/privacidade` com texto genérico provisório; checkbox de aceite no cadastro.
 - [x] Contexto de sessão do cliente; "Minha conta" (editar perfil); Header com Entrar / Minha conta.
 

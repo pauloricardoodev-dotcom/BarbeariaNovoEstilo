@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router';
 
 /**
- * Links para seções da home (#servicos, #agendamento…) que funcionam em qualquer página:
+ * Links para seções da home (#sobre, #agendamento…) que funcionam em qualquer página:
  * na home rola suavemente; nas outras, navega para "/#secao" e a home rola ao montar.
  */
 const useIrParaSecao = () => {

@@ -35,6 +35,7 @@ Seção "Nossa equipe / Profissionais" com cards e imagens; `PROS` existe em `co
 
 ## Conta do cliente (`pages/`, Fase 3)
 Backend: `/api/clientes/*` (ver `arquitetura.md`). Sessão em cookie httpOnly; o front só pergunta `GET /clientes/me`.
+- **Moldura de /entrar e /cadastro** (`components/conta/AuthShell.jsx` + `styles/entrar.css`): tela dividida com cabeçalho próprio (marca + "Área do cliente"; o Header/Footer do site não aparecem nessas duas rotas), imagem de Londres (`public/assets/big-ben-londres.jpg`) e cartão marfim. As duas rotas são filhas do mesmo layout, então trocar de uma para a outra **anima**: imagem e cartão trocam de lado (slide de ~0,75 s, via transform + container queries; sem movimento com `prefers-reduced-motion`). Na etapa "Quase lá" a página chama `definirCentral(true)` e a imagem vira fundo escurecido com o cartão centralizado. Abaixo de 900 px: coluna única, imagem reduzida a uma faixa, sem slide. Campos aceitam `icone` (`components/conta/icones.jsx`).
 - **Entrar** (`/entrar`): e-mail + senha (`autocomplete` username/current-password, para o navegador salvar), "Esqueci minha senha", link para cadastro. Aceita `?voltar=/caminho` (só caminhos internos). Conta não verificada vai antes para `/verificar`.
 - **Cadastro** (`/cadastro`): nome, e-mail, celular (máscara `(41) 99999-0000`), senha + confirmação (mín. 8, mostrar/ocultar), aceite de termos/privacidade (links abrem em nova aba). Validação básica no front; erros do backend (409 e-mail/telefone duplicado, 400) aparecem no campo correspondente.
 - **Verificar** (`/verificar`): um bloco para o e-mail e outro para o WhatsApp, código de 6 dígitos (`one-time-code`), "Reenviar" com contagem de 60 s. Em dev, os códigos aparecem no console do backend (`*_PROVEDOR=log`).
@@ -42,7 +43,7 @@ Backend: `/api/clientes/*` (ver `arquitetura.md`). Sessão em cookie httpOnly; o
 - **Minha conta** (`/minha-conta`): aviso se falta verificar; editar nome/e-mail/celular (trocar e-mail pede a senha atual; trocar contato exige nova verificação); alterar senha (desconecta outros aparelhos); sair.
 - **Termos / Privacidade**: texto genérico **provisório**; ao trocar pelo definitivo, atualizar `TERMOS_VERSAO_ATUAL` no backend.
 - **Login obrigatório**: a home exige sessão (`ExigeCliente`); sem sessão, o Header mostra só a marca e "Entrar".
-- Ainda não: botão "Entrar com Google" (Fase 2).
+- **Entrar com Google** (`components/conta/GoogleEntrada.jsx`): botão do Google Identity Services no topo de `/entrar` e `/cadastro`, separado do formulário por "ou" (só aparece com `VITE_GOOGLE_CLIENT_ID` e se o script do Google carregar). Conta já existente entra direto; conta nova vê "Quase lá": só o celular + aceite dos termos (o token pendente fica em memória, vale 10 min), depois segue para a verificação do WhatsApp (o e-mail já vem verificado). Conta só-Google (`temSenha: false`) em "Minha conta": troca de e-mail sem pedir senha e o bloco vira "Criar senha" (sem "senha atual").
 
 
 ## Meus agendamentos (`/meus-agendamentos`)

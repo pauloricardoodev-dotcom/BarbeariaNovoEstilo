@@ -7,9 +7,8 @@ import useConfiguracoes from '../configuracao/useConfiguracoes';
 
 const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
-  { id: 'servicos', label: 'Serviços' },
-  { id: 'agendamento', label: 'Agendar' },
   { id: 'sobre', label: 'Sobre' },
+  { id: 'agendamento', label: 'Agendar' },
 ];
 
 const Header = () => {

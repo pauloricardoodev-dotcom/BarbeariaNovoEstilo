@@ -28,7 +28,8 @@ const MeusDados = ({ cliente, aoSalvar }) => {
     try {
       const atualizado = await atualizarPerfil({
         ...(nomeMudou ? { nome } : {}),
-        ...(emailMudou ? { email, senhaAtual } : {}),
+        // Conta só-Google não tem senha para confirmar.
+        ...(emailMudou ? { email, ...(cliente.temSenha ? { senhaAtual } : {}) } : {}),
         ...(telefoneMudou ? { telefone } : {}),
       });
       aoSalvar(atualizado);
@@ -77,7 +78,7 @@ const MeusDados = ({ cliente, aoSalvar }) => {
           dica={cliente.emailVerificado ? 'Confirmado' : 'Ainda não confirmado'}
           maxLength={254}
         />
-        {emailMudou && (
+        {emailMudou && cliente.temSenha && (
           <CampoSenha
             label="Senha atual"
             name="current-password"
@@ -101,7 +102,7 @@ const MeusDados = ({ cliente, aoSalvar }) => {
         <button
           type="submit"
           className="btn btn-primary"
-          disabled={salvando || !algoMudou || (emailMudou && !senhaAtual)}
+          disabled={salvando || !algoMudou || (emailMudou && cliente.temSenha && !senhaAtual)}
         >
           {salvando ? 'Salvando…' : 'Salvar dados'}
         </button>
@@ -110,7 +111,7 @@ const MeusDados = ({ cliente, aoSalvar }) => {
   );
 };
 
-const AlterarSenha = ({ email, aoTrocar }) => {
+const AlterarSenha = ({ email, temSenha, aoTrocar }) => {
   const [atual, setAtual] = useState('');
   const [nova, setNova] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
@@ -127,11 +128,15 @@ const AlterarSenha = ({ email, aoTrocar }) => {
     if (nova !== confirmacao) return setErro('As senhas não conferem.');
     setSalvando(true);
     try {
-      aoTrocar(await trocarSenha(atual, nova));
+      aoTrocar(await trocarSenha(temSenha ? atual : undefined, nova));
       setAtual('');
       setNova('');
       setConfirmacao('');
-      setSucesso('Senha alterada. Outros aparelhos conectados foram desconectados.');
+      setSucesso(
+        temSenha
+          ? 'Senha alterada. Outros aparelhos conectados foram desconectados.'
+          : 'Senha criada. Agora você também pode entrar com e-mail e senha.',
+      );
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -141,13 +146,18 @@ const AlterarSenha = ({ email, aoTrocar }) => {
 
   return (
     <div className="conta-secao">
-      <h2>Alterar senha</h2>
+      <h2>{temSenha ? 'Alterar senha' : 'Criar senha'}</h2>
+      {!temSenha && (
+        <p className="conta-sub">Você entra com o Google. Se quiser, crie uma senha para também entrar com e-mail e senha.</p>
+      )}
       <Alerta>{erro}</Alerta>
       <Alerta tipo="sucesso">{sucesso}</Alerta>
       <form onSubmit={handleSubmit} noValidate>
         {/* Usuário oculto: ajuda o gerenciador de senhas a associar a nova senha à conta. */}
         <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
-        <CampoSenha label="Senha atual" name="current-password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} />
+        {temSenha && (
+          <CampoSenha label="Senha atual" name="current-password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} />
+        )}
         <CampoSenha
           label="Nova senha"
           name="new-password"
@@ -165,8 +175,8 @@ const AlterarSenha = ({ email, aoTrocar }) => {
           onChange={(e) => setConfirmacao(e.target.value)}
           maxLength={128}
         />
-        <button type="submit" className="btn btn-primary" disabled={salvando || !atual || !nova}>
-          {salvando ? 'Salvando…' : 'Alterar senha'}
+        <button type="submit" className="btn btn-primary" disabled={salvando || (temSenha && !atual) || !nova}>
+          {salvando ? 'Salvando…' : temSenha ? 'Alterar senha' : 'Criar senha'}
         </button>
       </form>
     </div>
@@ -194,7 +204,7 @@ const MinhaContaPage = () => {
         </div>
       )}
       <MeusDados cliente={cliente} aoSalvar={definirCliente} />
-      <AlterarSenha email={cliente.email} aoTrocar={definirCliente} />
+      <AlterarSenha email={cliente.email} temSenha={cliente.temSenha} aoTrocar={definirCliente} />
       <div className="conta-secao conta-secao-sair">
         <button type="button" className="btn btn-outline" onClick={handleSair}>
           Sair da conta

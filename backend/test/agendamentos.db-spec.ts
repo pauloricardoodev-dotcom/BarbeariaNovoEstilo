@@ -57,6 +57,7 @@ describe('Agendamentos (integração com o banco)', () => {
       telefone: c.telefone,
       emailVerificado: true,
       telefoneVerificado: true,
+      temSenha: true,
     };
   }
 

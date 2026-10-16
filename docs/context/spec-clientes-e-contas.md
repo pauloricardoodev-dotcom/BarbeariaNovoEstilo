@@ -67,7 +67,8 @@ Ambas com RLS ligado sem policies + `REVOKE` de `anon`/`authenticated`. Nenhuma 
 - **Recuperação de senha:** resposta sempre genérica ("se o e-mail existir, enviamos instruções"); token de uso único; ao concluir, incrementa `versao_sessao`.
 - **Google:** frontend usa Google Identity Services e manda o ID token; backend valida com `google-auth-library` (`aud` = `GOOGLE_CLIENT_ID`, `email_verified = true`).
   - Achou `google_sub` → login.
-  - Não achou, mas existe cliente com o mesmo e-mail → vincula `google_sub` (o Google comprovou o e-mail).
+  - Não achou, mas existe cliente com o mesmo e-mail → vincula `google_sub` (o Google comprovou o e-mail). **Se o e-mail desse cliente não estava verificado**, zera `senha_hash`, incrementa `versao_sessao` e invalida tokens de recuperação: quem cadastrou o e-mail sem ser o dono perde o acesso. Cadastro já ligado a outro `google_sub`, ou conta inativa → 401 genérico.
+  - Sem `GOOGLE_CLIENT_ID` o login com Google responde 503. Rotas: `POST /clientes/auth/google` e `POST /clientes/auth/google/completar` (ver plano, Fase 2).
   - Conta nova → `email_verificado_em` preenchido; como o Google não fornece telefone, devolve um token curto de "cadastro pendente" e o frontend pede telefone + aceite dos termos (verificação por WhatsApp em seguida).
 - **Telefone ou e-mail já cadastrados** → recusar.
 - **Rotas do cliente:** `GET/PATCH /me` (alteração explícita; trocar e-mail ou telefone zera a verificação correspondente e envia novo código), `POST /me/senha`, reenvio de códigos. Rotas de agendamento do cliente entram na fase de agendamentos.

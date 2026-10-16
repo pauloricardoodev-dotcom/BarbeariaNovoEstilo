@@ -13,6 +13,7 @@ import {
 } from './clientes.controller.js';
 import { AUDIENCIA_CLIENTE } from './clientes.types.js';
 import { ContaClienteService } from './conta-cliente.service.js';
+import { VerificadorGoogle, VerificadorGoogleOficial } from './google.js';
 import { TokensClienteService } from './tokens-cliente.service.js';
 
 @Module({
@@ -42,6 +43,7 @@ import { TokensClienteService } from './tokens-cliente.service.js';
     ContaClienteService,
     ClientesAdminService,
     TokensClienteService,
+    { provide: VerificadorGoogle, useClass: VerificadorGoogleOficial },
     CookieSessaoCliente,
     ClienteJwtStrategy,
     ClienteAuthGuard,

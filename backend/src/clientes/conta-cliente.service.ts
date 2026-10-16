@@ -13,17 +13,23 @@ import type { Env } from '../config/env.validation.js';
 import { EmailService, WhatsAppService } from '../mensagens/mensagens.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
+  AUDIENCIA_GOOGLE_PENDENTE,
+  DURACAO_GOOGLE_PENDENTE_SEGUNDOS,
   paraClienteAutenticado,
   SELECAO_SESSAO,
   TERMOS_VERSAO_ATUAL,
   type ClienteAutenticado,
+  type PayloadGooglePendente,
   type PayloadJwtCliente,
+  type ResultadoGoogle,
 } from './clientes.types.js';
 import { traduzirConflito } from './conflitos.js';
 import type {
   AtualizarPerfilDto,
   CadastroClienteDto,
+  GoogleCompletarDto,
 } from './dto/conta.dto.js';
+import { VerificadorGoogle } from './google.js';
 import { TokensClienteService } from './tokens-cliente.service.js';
 
 export interface SessaoCliente {
@@ -32,6 +38,10 @@ export interface SessaoCliente {
 }
 
 type Canal = 'email' | 'telefone';
+
+const MSG_GOOGLE_INVALIDO = 'Não foi possível entrar com o Google.';
+const MSG_GOOGLE_EXPIRADO =
+  'Seu cadastro com o Google expirou. Entre com o Google novamente.';
 
 @Injectable()
 export class ContaClienteService {
@@ -47,7 +57,161 @@ export class ContaClienteService {
     private readonly email: EmailService,
     private readonly whatsapp: WhatsAppService,
     private readonly config: ConfigService<Env, true>,
+    private readonly google: VerificadorGoogle,
   ) {}
+
+  /**
+   * Login com Google. Nome e e-mail vêm só do ID token verificado, nunca do corpo da requisição.
+   * Conta nova não é criada aqui: falta o telefone (NOT NULL) e o aceite dos termos.
+   */
+  async entrarComGoogle(credencial: string): Promise<ResultadoGoogle> {
+    const id = await this.google.verificar(credencial);
+    if (!id) throw new UnauthorizedException(MSG_GOOGLE_INVALIDO);
+
+    const porSub = await this.prisma.cliente.findUnique({
+      where: { googleSub: id.sub },
+      select: { ...SELECAO_SESSAO, ativo: true },
+    });
+    if (porSub) return this.sessaoGoogle(porSub);
+
+    const porEmail = await this.prisma.cliente.findUnique({
+      where: { email: id.email },
+      select: {
+        ...SELECAO_SESSAO,
+        ativo: true,
+        googleSub: true,
+        senhaHash: true,
+      },
+    });
+    if (porEmail) {
+      // Outra conta Google já vinculada a este cadastro: não troca o vínculo.
+      if (porEmail.googleSub && porEmail.googleSub !== id.sub) {
+        throw new UnauthorizedException(MSG_GOOGLE_INVALIDO);
+      }
+      if (!porEmail.ativo) throw new UnauthorizedException(MSG_GOOGLE_INVALIDO);
+
+      // O Google comprovou o e-mail. Se o cadastro nunca o tinha verificado, quem o criou
+      // pode não ser o dono do e-mail: a senha definida por essa pessoa é descartada
+      // e as sessões abertas caem. Com o e-mail já verificado, só vincula.
+      const emailNaoVerificado = porEmail.emailVerificadoEm === null;
+      const vinculado = await this.prisma.$transaction(async (tx) => {
+        const cliente = await tx.cliente.update({
+          where: { id: porEmail.id },
+          data: {
+            googleSub: id.sub,
+            ultimoLoginEm: new Date(),
+            ...(emailNaoVerificado
+              ? {
+                  emailVerificadoEm: new Date(),
+                  senhaHash: null,
+                  versaoSessao: { increment: 1 },
+                }
+              : {}),
+          },
+          select: SELECAO_SESSAO,
+        });
+        if (emailNaoVerificado) {
+          await this.tokens.invalidar(tx, porEmail.id, 'recuperar_senha');
+        }
+        return cliente;
+      });
+      return {
+        status: 'autenticado',
+        sessao: await this.criarSessao(vinculado),
+      };
+    }
+
+    const payload: PayloadGooglePendente = {
+      sub: id.sub,
+      email: id.email,
+      nome: id.nome,
+    };
+    return {
+      status: 'cadastro_pendente',
+      nome: id.nome,
+      email: id.email,
+      tokenPendente: await this.jwt.signAsync(payload, {
+        audience: AUDIENCIA_GOOGLE_PENDENTE,
+        expiresIn: DURACAO_GOOGLE_PENDENTE_SEGUNDOS,
+      }),
+    };
+  }
+
+  /** Segunda etapa do primeiro acesso com Google: telefone + aceite dos termos. */
+  async completarCadastroGoogle(
+    dto: GoogleCompletarDto,
+  ): Promise<SessaoCliente> {
+    let pendente: PayloadGooglePendente;
+    try {
+      pendente = await this.jwt.verifyAsync<PayloadGooglePendente>(
+        dto.tokenPendente,
+        { audience: AUDIENCIA_GOOGLE_PENDENTE, algorithms: ['HS256'] },
+      );
+    } catch {
+      throw new UnauthorizedException(MSG_GOOGLE_EXPIRADO);
+    }
+    if (
+      typeof pendente.sub !== 'string' ||
+      typeof pendente.email !== 'string' ||
+      typeof pendente.nome !== 'string'
+    ) {
+      throw new UnauthorizedException(MSG_GOOGLE_EXPIRADO);
+    }
+
+    const agora = new Date();
+    let cliente;
+    try {
+      cliente = await this.prisma.cliente.create({
+        data: {
+          nome: pendente.nome,
+          email: pendente.email,
+          telefone: dto.telefone,
+          googleSub: pendente.sub,
+          emailVerificadoEm: agora,
+          termosVersaoAceita: TERMOS_VERSAO_ATUAL,
+          termosAceitosEm: agora,
+          ultimoLoginEm: agora,
+        },
+        select: SELECAO_SESSAO,
+      });
+    } catch (erro) {
+      return traduzirConflito(this.prisma, erro, {
+        email: pendente.email,
+        telefone: dto.telefone,
+      });
+    }
+
+    // O e-mail já vem verificado pelo Google; falta só o telefone (WhatsApp).
+    this.enviarCodigo(cliente.id, 'telefone').catch((erro: unknown) =>
+      this.logger.error(
+        `Falha ao enviar código (telefone) do cadastro Google: ${String(erro)}`,
+      ),
+    );
+    return this.criarSessao(cliente);
+  }
+
+  private async sessaoGoogle(registro: {
+    ativo: boolean;
+    id: string;
+    nome: string;
+    email: string;
+    telefone: string;
+    emailVerificadoEm: Date | null;
+    telefoneVerificadoEm: Date | null;
+    senhaHash: string | null;
+    versaoSessao: number;
+  }): Promise<ResultadoGoogle> {
+    if (!registro.ativo) throw new UnauthorizedException(MSG_GOOGLE_INVALIDO);
+    await this.prisma.cliente.update({
+      where: { id: registro.id },
+      data: { ultimoLoginEm: new Date() },
+      select: { id: true },
+    });
+    return {
+      status: 'autenticado',
+      sessao: await this.criarSessao(registro),
+    };
+  }
 
   async cadastrar(dto: CadastroClienteDto): Promise<SessaoCliente> {
     const agora = new Date();
@@ -324,6 +488,7 @@ export class ContaClienteService {
     telefone: string;
     emailVerificadoEm: Date | null;
     telefoneVerificadoEm: Date | null;
+    senhaHash: string | null;
     versaoSessao: number;
   }): Promise<SessaoCliente> {
     const payload: PayloadJwtCliente = {

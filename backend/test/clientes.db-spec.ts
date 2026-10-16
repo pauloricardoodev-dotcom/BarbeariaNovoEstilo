@@ -14,6 +14,10 @@ import {
   WhatsAppService,
   type EmailMensagem,
 } from '../src/mensagens/mensagens.types.js';
+import {
+  VerificadorGoogle,
+  type IdentidadeGoogle,
+} from '../src/clientes/google.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 
 const PREFIXO = `teste-${randomUUID().slice(0, 8)}`;
@@ -38,6 +42,30 @@ class WhatsAppFake extends WhatsAppService {
   }
   enviarAvisoReagendamento() {
     return Promise.resolve();
+  }
+}
+
+/** Troca a validação do ID token do Google (sem rede): credencial conhecida => identidade. */
+class GoogleFake extends VerificadorGoogle {
+  identidades = new Map<string, IdentidadeGoogle>();
+  verificar(idToken: string) {
+    return Promise.resolve(this.identidades.get(idToken) ?? null);
+  }
+  /** Registra uma identidade e devolve a "credencial" que o front mandaria. */
+  emitir(email: string, nome = 'Fulano do Google'): string {
+    const credencial = `google-token-${randomUUID()}`;
+    this.identidades.set(credencial, {
+      sub: `sub-${randomUUID()}`,
+      email,
+      nome,
+    });
+    return credencial;
+  }
+  /** Outra credencial para o mesmo `sub` (novo login da mesma conta Google). */
+  reemitir(credencial: string): string {
+    const nova = `google-token-${randomUUID()}`;
+    this.identidades.set(nova, this.identidades.get(credencial)!);
+    return nova;
   }
 }
 
@@ -75,6 +103,7 @@ describe('Clientes (integração com o banco)', () => {
   let prisma: PrismaService;
   const email = new EmailFake();
   const whatsapp = new WhatsAppFake();
+  const google = new GoogleFake();
   let storageAtual = new ThrottlerStorageService();
   const http = () => request(app.getHttpServer());
 
@@ -87,6 +116,8 @@ describe('Clientes (integração com o banco)', () => {
       .useValue(email)
       .overrideProvider(WhatsAppService)
       .useValue(whatsapp)
+      .overrideProvider(VerificadorGoogle)
+      .useValue(google)
       .overrideProvider(ThrottlerStorage)
       .useValue(throttlerStorage)
       .compile();
@@ -162,6 +193,7 @@ describe('Clientes (integração com o banco)', () => {
         telefone: tel.e164,
         emailVerificado: false,
         telefoneVerificado: false,
+        temSenha: true,
       });
       const cookie = (
         (res.headers['set-cookie'] ?? []) as unknown as string[]
@@ -517,6 +549,231 @@ describe('Clientes (integração com o banco)', () => {
         antes.updatedAt.getTime(),
       );
       expect(depois.createdAt).toEqual(antes.createdAt);
+    });
+  });
+
+  describe('google', () => {
+    const ROTA = '/api/clientes/auth/google';
+    const COMPLETAR = '/api/clientes/auth/google/completar';
+
+    function entrar(credencial: string) {
+      return http().post(ROTA).send({ credencial });
+    }
+
+    /** Primeiro acesso completo: pendente -> completar. */
+    async function criarContaGoogle() {
+      const email = novoEmail();
+      const credencial = google.emitir(email);
+      const pendente = await entrar(credencial).expect(200);
+      const tel = novoTelefone();
+      const res = await http()
+        .post(COMPLETAR)
+        .send({
+          tokenPendente: pendente.body.tokenPendente,
+          telefone: tel.digitado,
+          aceiteTermos: true,
+        })
+        .expect(201);
+      return { email, credencial, tel, res };
+    }
+
+    it('conta nova: devolve cadastro pendente sem criar cliente nem sessão', async () => {
+      const email = novoEmail();
+      const res = await entrar(google.emitir(email, 'Maria Google')).expect(200);
+      expect(res.body).toMatchObject({
+        status: 'cadastro_pendente',
+        nome: 'Maria Google',
+        email,
+      });
+      expect(res.body.tokenPendente).toEqual(expect.any(String));
+      expect(res.headers['set-cookie']).toBeUndefined();
+      expect(await prisma.cliente.count({ where: { email } })).toBe(0);
+    });
+
+    it('completar: cria a conta com e-mail verificado, sem senha, e manda o código do WhatsApp', async () => {
+      const { email, tel, res } = await criarContaGoogle();
+      expect(res.body).toMatchObject({
+        email,
+        emailVerificado: true,
+        telefoneVerificado: false,
+        temSenha: false,
+        telefone: tel.e164,
+      });
+      expect(res.body).not.toHaveProperty('googleSub');
+      expect(res.body).not.toHaveProperty('senhaHash');
+      cookieDe(res, 'ne_cliente_sessao');
+
+      const linha = await prisma.cliente.findUniqueOrThrow({ where: { email } });
+      expect(linha.googleSub).toEqual(expect.any(String));
+      expect(linha.senhaHash).toBeNull();
+      expect(linha.termosVersaoAceita).toBeTruthy();
+      await codigoWhatsApp(tel.e164);
+    });
+
+    it('login seguinte pelo mesmo Google entra direto', async () => {
+      const { credencial, email } = await criarContaGoogle();
+      const res = await entrar(google.reemitir(credencial)).expect(200);
+      expect(res.body.status).toBe('autenticado');
+      expect(res.body.cliente.email).toBe(email);
+      const cookie = cookieDe(res, 'ne_cliente_sessao');
+      await http().get('/api/clientes/me').set('Cookie', cookie).expect(200);
+    });
+
+    it('e-mail já verificado: só vincula, a senha continua valendo', async () => {
+      const c = await cadastrarOk();
+      const codigo = await codigoEmail(c.corpo.email);
+      await http()
+        .post('/api/clientes/me/verificar-email')
+        .set('Cookie', c.cookie)
+        .send({ codigo })
+        .expect(200);
+
+      const res = await entrar(google.emitir(c.corpo.email)).expect(200);
+      expect(res.body.status).toBe('autenticado');
+      expect(res.body.cliente.id).toBe(c.id);
+      const linha = await prisma.cliente.findUniqueOrThrow({
+        where: { id: c.id },
+      });
+      expect(linha.googleSub).toEqual(expect.any(String));
+      expect(linha.senhaHash).not.toBeNull();
+      await http()
+        .post('/api/clientes/auth/login')
+        .send({ email: c.corpo.email, senha: SENHA })
+        .expect(200);
+      // Sessão anterior continua válida (nada mudou na credencial).
+      await http().get('/api/clientes/me').set('Cookie', c.cookie).expect(200);
+    });
+
+    it('e-mail NÃO verificado: vincula, descarta a senha de quem cadastrou e derruba as sessões', async () => {
+      const c = await cadastrarOk(); // cadastro por senha, e-mail nunca verificado
+      const res = await entrar(google.emitir(c.corpo.email)).expect(200);
+      expect(res.body.status).toBe('autenticado');
+      expect(res.body.cliente.emailVerificado).toBe(true);
+
+      const linha = await prisma.cliente.findUniqueOrThrow({
+        where: { id: c.id },
+      });
+      expect(linha.googleSub).toEqual(expect.any(String));
+      expect(linha.senhaHash).toBeNull();
+      await http()
+        .post('/api/clientes/auth/login')
+        .send({ email: c.corpo.email, senha: SENHA })
+        .expect(401);
+      await http().get('/api/clientes/me').set('Cookie', c.cookie).expect(401);
+      // A sessão nova (do Google) funciona.
+      const nova = cookieDe(res, 'ne_cliente_sessao');
+      await http().get('/api/clientes/me').set('Cookie', nova).expect(200);
+    });
+
+    it('cadastro já ligado a OUTRA conta Google não é reapontado', async () => {
+      const dono = await criarContaGoogle();
+      const intruso = google.emitir(dono.email); // mesmo e-mail, outro `sub`
+      await entrar(intruso).expect(401);
+      const linha = await prisma.cliente.findUniqueOrThrow({
+        where: { email: dono.email },
+      });
+      const original = google.identidades.get(dono.credencial)!;
+      expect(linha.googleSub).toBe(original.sub);
+    });
+
+    it('credencial inválida (ou de outro app / e-mail não verificado) => 401 genérico', async () => {
+      const res = await entrar(`google-token-${randomUUID()}`).expect(401);
+      expect(res.body.message).toBe('Não foi possível entrar com o Google.');
+      await http().post(ROTA).send({}).expect(400);
+      await http().post(ROTA).send({ credencial: 'curto' }).expect(400);
+    });
+
+    it('conta desativada não entra pelo Google', async () => {
+      const { email, credencial } = await criarContaGoogle();
+      await prisma.cliente.update({ where: { email }, data: { ativo: false } });
+      await entrar(google.reemitir(credencial)).expect(401);
+    });
+
+    it('completar: exige aceite dos termos e telefone válido', async () => {
+      const pendente = await entrar(google.emitir(novoEmail())).expect(200);
+      const tokenPendente = pendente.body.tokenPendente;
+      await http()
+        .post(COMPLETAR)
+        .send({ tokenPendente, telefone: novoTelefone().digitado })
+        .expect(400);
+      await http()
+        .post(COMPLETAR)
+        .send({
+          tokenPendente,
+          telefone: novoTelefone().digitado,
+          aceiteTermos: false,
+        })
+        .expect(400);
+      await http()
+        .post(COMPLETAR)
+        .send({ tokenPendente, telefone: '123', aceiteTermos: true })
+        .expect(400);
+    });
+
+    it('completar: telefone já cadastrado é recusado (409) e não cria a conta', async () => {
+      const existente = await cadastrarOk();
+      const email = novoEmail();
+      const pendente = await entrar(google.emitir(email)).expect(200);
+      await http()
+        .post(COMPLETAR)
+        .send({
+          tokenPendente: pendente.body.tokenPendente,
+          telefone: existente.tel.digitado,
+          aceiteTermos: true,
+        })
+        .expect(409);
+      expect(await prisma.cliente.count({ where: { email } })).toBe(0);
+    });
+
+    it('completar: o mesmo token usado duas vezes não duplica a conta', async () => {
+      const pendente = await entrar(google.emitir(novoEmail())).expect(200);
+      const corpo = {
+        tokenPendente: pendente.body.tokenPendente,
+        telefone: novoTelefone().digitado,
+        aceiteTermos: true,
+      };
+      await http().post(COMPLETAR).send(corpo).expect(201);
+      await http()
+        .post(COMPLETAR)
+        .send({ ...corpo, telefone: novoTelefone().digitado })
+        .expect(409);
+    });
+
+    it('completar: token inválido ou JWT de sessão => 401', async () => {
+      const c = await cadastrarOk();
+      const sessao = c.cookie.split('=')[1];
+      const corpo = { telefone: novoTelefone().digitado, aceiteTermos: true };
+      await http()
+        .post(COMPLETAR)
+        .send({ ...corpo, tokenPendente: `x${randomUUID()}${randomUUID()}` })
+        .expect(401);
+      // JWT de sessão (aud "cliente") não vale como cadastro pendente.
+      await http()
+        .post(COMPLETAR)
+        .send({ ...corpo, tokenPendente: sessao })
+        .expect(401);
+    });
+
+    it('o token pendente não funciona como sessão', async () => {
+      const pendente = await entrar(google.emitir(novoEmail())).expect(200);
+      await http()
+        .get('/api/clientes/me')
+        .set('Cookie', `ne_cliente_sessao=${pendente.body.tokenPendente}`)
+        .expect(401);
+    });
+
+    it('conta só-Google pode criar senha em /me/senha (sem senha atual)', async () => {
+      const { email, res } = await criarContaGoogle();
+      const cookie = cookieDe(res, 'ne_cliente_sessao');
+      await http()
+        .post('/api/clientes/me/senha')
+        .set('Cookie', cookie)
+        .send({ novaSenha: SENHA })
+        .expect(201);
+      await http()
+        .post('/api/clientes/auth/login')
+        .send({ email, senha: SENHA })
+        .expect(200);
     });
   });
 

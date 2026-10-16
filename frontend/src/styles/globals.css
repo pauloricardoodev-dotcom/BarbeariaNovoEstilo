@@ -6,8 +6,8 @@
   --cream: #F2F2F0;
   --cream-2: #E7E7E4;
   --white: #FFFFFF;
-  --gold: #C7CCD0;
-  --gold-2: #D8DBDD;
+  --gold: #B08D57;
+  --gold-2: #C9A66B;
   --ink: #1C1D1F;
   --ink-soft: #4A4D53;
   --line: rgba(18, 18, 20, 0.16);
@@ -135,7 +135,7 @@ header {
   z-index: 500;
   background: rgba(18, 18, 20, 0.96);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(199, 204, 208, 0.3);
+  border-bottom: 1px solid rgba(176, 141, 87, 0.3);
 }
 
 .header-inner {
@@ -359,7 +359,7 @@ nav.main-nav a:hover {
   display: flex;
   flex-direction: column;
   background: var(--navy);
-  border-left: 1px solid rgba(199, 204, 208, 0.3);
+  border-left: 1px solid rgba(176, 141, 87, 0.3);
   box-shadow: -12px 0 32px rgba(0, 0, 0, 0.4);
   transform: translateX(100%);
   visibility: hidden;
@@ -579,6 +579,10 @@ nav.main-nav a:hover {
 }
 
 @media (max-width: 575.98px) {
+  .hero {
+    min-height: min(320px, calc(100vh - 84px));
+  }
+
   .hero-actions .btn {
     width: 100%;
   }
@@ -1505,7 +1509,7 @@ nav.main-nav a:hover {
 .about-art .fr {
   position: absolute;
   inset: 16px;
-  border: 1px solid rgba(199, 204, 208, 0.45);
+  border: 1px solid rgba(176, 141, 87, 0.45);
 }
 
 .about-copy .sub {

@@ -30,10 +30,21 @@ import {
   CadastroClienteDto,
   CodigoVerificacaoDto,
   EsqueciSenhaDto,
+  GoogleCompletarDto,
+  GoogleLoginDto,
   ReenviarCodigoDto,
   RedefinirSenhaDto,
   TrocarSenhaDto,
 } from './dto/conta.dto.js';
+
+type RespostaGoogle =
+  | { status: 'autenticado'; cliente: ClienteAutenticado }
+  | {
+      status: 'cadastro_pendente';
+      nome: string;
+      email: string;
+      tokenPendente: string;
+    };
 
 @Injectable()
 export class CookieSessaoCliente {
@@ -93,6 +104,38 @@ export class ClientesAuthController {
     const sessao = await this.conta.login(dto.email, dto.senha);
     if (!sessao) throw new UnauthorizedException('E-mail ou senha inválidos.');
     return this.cookie.definir(res, sessao);
+  }
+
+  /** Login/vínculo com Google, ou devolve o "cadastro pendente" (falta telefone + termos). */
+  @Publico()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async google(
+    @Body() dto: GoogleLoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<RespostaGoogle> {
+    const r = await this.conta.entrarComGoogle(dto.credencial);
+    if (r.status === 'autenticado') {
+      return {
+        status: 'autenticado',
+        cliente: this.cookie.definir(res, r.sessao),
+      };
+    }
+    return r;
+  }
+
+  @Publico()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('google/completar')
+  async completarGoogle(
+    @Body() dto: GoogleCompletarDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ClienteAutenticado> {
+    return this.cookie.definir(
+      res,
+      await this.conta.completarCadastroGoogle(dto),
+    );
   }
 
   @Publico()

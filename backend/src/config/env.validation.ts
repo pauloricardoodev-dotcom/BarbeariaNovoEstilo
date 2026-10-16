@@ -9,6 +9,8 @@ export interface Env {
   NODE_ENV: string;
   /** Base dos links enviados por e-mail (ex.: redefinição de senha). */
   FRONTEND_URL: string;
+  /** ID do cliente OAuth (Web) do Google. Vazio = login com Google desligado (503). */
+  GOOGLE_CLIENT_ID: string;
   EMAIL_PROVEDOR: ProvedorEmail;
   EMAIL_REMETENTE: string;
   RESEND_API_KEY: string;
@@ -103,6 +105,7 @@ export function validarEnv(config: Record<string, unknown>): Env {
     SESSAO_CLIENTE_DURACAO_SEGUNDOS: duracaoCliente,
     NODE_ENV: nodeEnv,
     FRONTEND_URL: frontendUrl,
+    GOOGLE_CLIENT_ID: texto(config.GOOGLE_CLIENT_ID),
     EMAIL_PROVEDOR: emailProvedor as ProvedorEmail,
     EMAIL_REMETENTE: emailRemetente,
     RESEND_API_KEY: resendApiKey,

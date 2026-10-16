@@ -1,0 +1,424 @@
+/* ===== Entrar / Cadastro: tela dividida (imagem de Londres + cartão marfim) =====
+   Três modos, escolhidos pela classe do AuthShell:
+   - auth-entrar:   imagem à esquerda, cartão à direita
+   - auth-cadastro: lados trocados (a animação é o slide entre os dois)
+   - auth-central:  etapa "Quase lá": imagem de fundo escurecida, cartão centralizado
+   Reaproveita .brand/.mini-emblem (globals.css) e .field/.btn/.conta-* (globals.css, conta.css). */
+
+.auth {
+  --ouro: var(--gold);
+  --marfim: #f7f3ea;
+  --carvao: #121214;
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --tempo: 0.75s;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--carvao);
+  color: var(--marfim);
+}
+
+/* ----- Cabeçalho ----- */
+.auth-topo {
+  position: relative; /* anula o sticky do `header` global */
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 76px;
+  padding: 0 clamp(20px, 4vw, 48px);
+  flex-shrink: 0;
+  background: #0d0d0f;
+  border-bottom: 1px solid rgba(176, 141, 87, 0.3);
+  backdrop-filter: none;
+}
+
+.auth-topo .brand:focus-visible {
+  outline: 2px solid var(--ouro);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.auth-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ouro);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* ----- Palco ----- */
+.auth-palco {
+  --w-img: 55cqw;
+  position: relative;
+  height: calc(100dvh - 76px);
+  min-height: 640px;
+  container-type: size;
+  overflow: hidden;
+  background: var(--carvao);
+}
+
+/* ----- Imagem ----- */
+.auth-imagem {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--w-img);
+  z-index: 1;
+  overflow: hidden;
+  background: #000;
+  transition:
+    transform var(--tempo) var(--ease),
+    width var(--tempo) var(--ease);
+}
+
+.auth-imagem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 74% center; /* mantém o Big Ben no enquadramento */
+  transition: opacity var(--tempo) var(--ease);
+}
+
+/* Gradiente escuro e quente embaixo, para o texto ler bem. */
+.auth-imagem::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(18, 10, 10, 0.94) 0%,
+    rgba(18, 10, 10, 0.62) 30%,
+    rgba(18, 10, 10, 0.12) 62%,
+    rgba(18, 10, 10, 0.3) 100%
+  );
+}
+
+.auth-imagem-texto {
+  position: absolute;
+  z-index: 1;
+  left: clamp(24px, 4vw, 56px);
+  right: clamp(24px, 4vw, 56px);
+  bottom: clamp(28px, 7vh, 72px);
+  max-width: 520px;
+  transition: opacity 0.4s ease;
+}
+
+.auth-imagem-texto h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(28px, 3.1vw, 46px);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--marfim);
+}
+
+.auth-traco {
+  display: block;
+  width: 56px;
+  height: 3px;
+  margin: 22px 0 16px;
+  background: var(--wine);
+}
+
+.auth-imagem-texto p {
+  margin: 0;
+  font-family: var(--serif-2);
+  font-style: italic;
+  font-size: clamp(18px, 1.7vw, 24px);
+  color: rgba(247, 243, 234, 0.9);
+}
+
+/* ----- Painel do cartão ----- */
+.auth-painel {
+  position: absolute;
+  inset: 0 auto 0 var(--w-img);
+  width: calc(100cqw - var(--w-img));
+  z-index: 2;
+  display: flex;
+  overflow-y: auto;
+  padding: clamp(20px, 4vh, 48px) clamp(16px, 3vw, 48px);
+  background-color: var(--carvao);
+  transition:
+    transform var(--tempo) var(--ease),
+    width var(--tempo) var(--ease),
+    background-color var(--tempo) var(--ease);
+}
+
+/* Textura quase imperceptível (pontinhos). */
+.auth-painel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(247, 243, 234, 0.035) 1px, transparent 1px);
+  background-size: 5px 5px;
+  pointer-events: none;
+  transition: opacity var(--tempo) ease;
+}
+
+.auth-cartao {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: auto; /* centraliza; se o cartão for mais alto, o painel rola */
+  padding: 40px 44px 34px;
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.auth-conteudo {
+  animation: auth-entra 0.55s 0.2s var(--ease) both;
+}
+
+@keyframes auth-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tipografia do cartão */
+.auth-eyebrow {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--wine);
+}
+
+.auth-cartao h1 {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.auth-cartao .conta-sub {
+  margin-bottom: 26px;
+}
+
+.auth-cartao .field {
+  margin-bottom: 18px;
+}
+
+.auth-cartao .field input:focus-visible {
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(155, 38, 53, 0.16);
+}
+
+.auth-cartao .btn-block {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.auth-cartao .btn:focus-visible {
+  outline: 2px solid var(--wine);
+  outline-offset: 3px;
+}
+
+/* ----- Cadastro: lados trocados ----- */
+.auth-cadastro .auth-imagem {
+  transform: translateX(calc(100cqw - var(--w-img)));
+}
+
+.auth-cadastro .auth-painel {
+  transform: translateX(calc(var(--w-img) * -1));
+}
+
+/* ----- Quase lá: imagem de fundo escurecida, cartão centralizado ----- */
+.auth-central .auth-imagem {
+  width: 100cqw;
+  transform: none;
+}
+
+.auth-central .auth-imagem img {
+  opacity: 0.3;
+}
+
+.auth-central .auth-imagem-texto {
+  opacity: 0;
+}
+
+.auth-central .auth-painel {
+  width: 100cqw;
+  transform: translateX(calc(var(--w-img) * -1));
+  background-color: transparent;
+}
+
+.auth-central .auth-painel::before {
+  opacity: 0;
+}
+
+/* ----- Tablet: imagem mais estreita ----- */
+@media (max-width: 1199.98px) {
+  .auth-palco {
+    --w-img: 42cqw;
+  }
+
+  .auth-cartao {
+    padding: 34px 32px 30px;
+  }
+}
+
+/* ----- Celular: coluna única, sem slide ----- */
+@media (max-width: 899.98px) {
+  .auth-topo {
+    height: 68px;
+  }
+
+  .auth-palco {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100dvh - 68px);
+    container-type: normal;
+    overflow: visible;
+  }
+
+  .auth-imagem,
+  .auth-cadastro .auth-imagem,
+  .auth-central .auth-imagem {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 104px;
+    flex-shrink: 0;
+    transform: none;
+  }
+
+  .auth-imagem-texto {
+    bottom: 12px;
+  }
+
+  .auth-imagem-texto h2 {
+    font-size: 21px;
+  }
+
+  .auth-traco,
+  .auth-imagem-texto p {
+    display: none;
+  }
+
+  .auth-painel,
+  .auth-cadastro .auth-painel,
+  .auth-central .auth-painel {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    flex: 1;
+    transform: none;
+    padding: 12px 16px 24px;
+  }
+
+  /* Quase lá: a imagem vira fundo da tela inteira, escurecida. */
+  .auth-central .auth-imagem {
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+
+  .auth-central .auth-painel {
+    background-color: transparent;
+  }
+
+  .auth-cartao {
+    padding: 28px 20px 24px;
+  }
+
+  .auth-cartao h1 {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 420px) {
+  .auth-area span {
+    display: none; /* sobra só o ícone, para a marca caber */
+  }
+}
+
+/* Sem animação para quem pediu menos movimento. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-imagem,
+  .auth-imagem img,
+  .auth-painel,
+  .auth-painel::before {
+    transition: none;
+  }
+
+  .auth-conteudo {
+    animation: none;
+  }
+}
+
+/* ----- Campos com ícone ----- */
+.field-caixa {
+  position: relative;
+}
+
+.field-icone {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.field-caixa input,
+.field-senha.com-icone input {
+  padding-left: 42px;
+}
+
+.field:focus-within .field-icone {
+  color: var(--wine);
+}
+
+/* Cadastro tem mais campos: espaçamento mais compacto para o botão do Google aparecer sem rolar tanto. */
+@media (min-width: 900px) {
+  .auth-cadastro .auth-cartao {
+    padding: 30px 40px 24px;
+  }
+
+  .auth-cadastro .auth-cartao h1 {
+    font-size: 30px;
+  }
+
+  .auth-cadastro .auth-cartao .conta-sub {
+    margin-bottom: 18px;
+  }
+
+  .auth-cadastro .auth-cartao .field {
+    margin-bottom: 12px;
+  }
+
+  .auth-cadastro .auth-cartao .field label {
+    margin-bottom: 6px;
+  }
+
+  .auth-cadastro .auth-cartao .field input {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+
+  .auth-cadastro .auth-cartao .conta-check {
+    margin: 0 0 16px;
+  }
+
+  .auth-cadastro .conta-ou {
+    margin: 14px 0;
+  }
+
+  .auth-cadastro .conta-rodape {
+    margin-top: 16px;
+  }
+}

@@ -34,6 +34,27 @@ export class CadastroClienteDto {
   aceiteTermos: boolean;
 }
 
+export class GoogleLoginDto {
+  /** ID token (JWT) entregue pelo Google Identity Services. */
+  @IsString({ message: 'Credencial do Google inválida.' })
+  @Length(20, 4096, { message: 'Credencial do Google inválida.' })
+  credencial: string;
+}
+
+export class GoogleCompletarDto {
+  @IsString({ message: 'Cadastro com Google inválido ou expirado.' })
+  @Length(20, 4096, { message: 'Cadastro com Google inválido ou expirado.' })
+  tokenPendente: string;
+
+  @CampoTelefone()
+  telefone: string;
+
+  @Equals(true, {
+    message: 'É preciso aceitar os termos de uso e a política de privacidade.',
+  })
+  aceiteTermos: boolean;
+}
+
 export class CodigoVerificacaoDto {
   @Transform(({ value }) =>
     typeof value === 'string' ? value.replace(/\s+/g, '') : value,

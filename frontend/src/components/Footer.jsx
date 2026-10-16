@@ -4,7 +4,7 @@ import useConfiguracoes, { descreverDiasDeTrabalho, formatarHoraCurta } from '..
 
 const NAV_LINKS = [
   { id: 'inicio', label: 'Início' },
-  { id: 'servicos', label: 'Serviços' },
+  { id: 'sobre', label: 'Sobre' },
   { id: 'agendamento', label: 'Agendar' },
 ];
 

@@ -41,7 +41,7 @@ const Hero = () => {
       <section className="hero" id="inicio">
         <div
           className="hero-photo"
-          style={{ backgroundImage: "url('/assets/hero.jpg')" }}
+          style={{ backgroundImage: "url('/assets/hero-corte.jpg')" }}
           role="img"
           aria-label="Barbeiro trabalhando no corte de um cliente"
         ></div>
@@ -63,11 +63,11 @@ const Hero = () => {
                   Agendar horário <Arrow />
                 </a>
                 <a
-                  href="#servicos"
+                  href="#sobre"
                   className="btn btn-outline-cream"
-                  onClick={(e) => scrollToSection(e, 'servicos')}
+                  onClick={(e) => scrollToSection(e, 'sobre')}
                 >
-                  Conhecer serviços <Arrow />
+                  Nossa história <Arrow />
                 </a>
               </div>
             </div>

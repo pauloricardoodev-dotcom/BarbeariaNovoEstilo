@@ -8,6 +8,16 @@ export const cadastrar = (dados) => post('/clientes/auth/cadastro', dados);
 
 export const entrar = (email, senha) => post('/clientes/auth/login', { email, senha });
 
+/**
+ * ID token do Google -> `{ status: 'autenticado', cliente }` ou
+ * `{ status: 'cadastro_pendente', nome, email, tokenPendente }` (falta telefone + termos).
+ */
+export const entrarComGoogle = (credencial) => post('/clientes/auth/google', { credencial });
+
+/** Segunda etapa do primeiro acesso com Google. O aceite dos termos é exigido pelo backend. */
+export const completarCadastroGoogle = (tokenPendente, telefone) =>
+  post('/clientes/auth/google/completar', { tokenPendente, telefone, aceiteTermos: true });
+
 export const sair = () => post('/clientes/auth/logout');
 
 export const esqueciSenha = (email) => post('/clientes/auth/esqueci-senha', { email });

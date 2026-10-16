@@ -5,7 +5,7 @@ const About = () => {
         <div className="about-art">
           <div className="fr"></div>
           <svg viewBox="0 0 300 220" width="70%" xmlns="http://www.w3.org/2000/svg">
-            <g fill="none" stroke="#C7CCD0" strokeWidth="1.4">
+            <g fill="none" stroke="#B08D57" strokeWidth="1.4">
               <rect x="30" y="30" width="240" height="160" />
               <line x1="30" y1="70" x2="270" y2="70"/>
               <line x1="100" y1="70" x2="100" y2="190"/>

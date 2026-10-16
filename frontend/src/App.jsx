@@ -1,9 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useLocation } from 'react-router';
 import 'bootstrap/dist/css/bootstrap-grid.min.css';
 import 'bootstrap/dist/css/bootstrap-utilities.min.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ExigeCliente from './components/conta/ExigeCliente';
+import AuthShell from './components/conta/AuthShell';
 import SessaoClienteProvider from './sessao/SessaoClienteProvider';
 import HomePage from './pages/HomePage';
 import EntrarPage from './pages/EntrarPage';
@@ -17,14 +18,20 @@ import TermosPage from './pages/TermosPage';
 import PrivacidadePage from './pages/PrivacidadePage';
 import './styles/globals.css';
 import './styles/conta.css';
+import './styles/entrar.css';
 
 // Casco do site: CSS, sessão do cliente, Header/Footer e rotas.
 // Login obrigatório: só entrar/cadastro/recuperação de senha/termos abrem sem sessão.
+// Telas com moldura própria (cabeçalho e imagem no AuthShell): sem Header/Footer do site.
+const ROTAS_COM_MOLDURA_PROPRIA = ['/entrar', '/cadastro'];
+
 function App() {
+  const { pathname } = useLocation();
+  const molduraPropria = ROTAS_COM_MOLDURA_PROPRIA.includes(pathname);
   return (
     <SessaoClienteProvider>
       <div className="App">
-        <Header />
+        {!molduraPropria && <Header />}
         <main>
           <Routes>
             {/* Login obrigatório: sem sessão, a home manda para /entrar (e volta depois). */}
@@ -37,8 +44,11 @@ function App() {
               }
             />
             {/* Abertas: necessárias para conseguir entrar. */}
-            <Route path="entrar" element={<EntrarPage />} />
-            <Route path="cadastro" element={<CadastroPage />} />
+            {/* Mesma moldura nas duas: trocar de uma para a outra anima (slide). */}
+            <Route element={<AuthShell />}>
+              <Route path="entrar" element={<EntrarPage />} />
+              <Route path="cadastro" element={<CadastroPage />} />
+            </Route>
             <Route path="esqueci-senha" element={<EsqueciSenhaPage />} />
             <Route path="redefinir-senha" element={<RedefinirSenhaPage />} />
             <Route path="termos" element={<TermosPage />} />
@@ -70,7 +80,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <Footer />
+        {!molduraPropria && <Footer />}
       </div>
     </SessaoClienteProvider>
   );

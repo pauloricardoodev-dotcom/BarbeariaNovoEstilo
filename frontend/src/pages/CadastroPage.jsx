@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useNavigate, useOutletContext, useSearchParams } from 'react-router';
 import { cadastrar } from '../api/clientes';
 import Campo, { CampoSenha } from '../components/conta/Campo';
-import ContaLayout, { Alerta } from '../components/conta/ContaLayout';
+import { Alerta } from '../components/conta/ContaLayout';
+import { BotaoGoogle, CompletarGoogle } from '../components/conta/GoogleEntrada';
+import { IconeCadeado, IconeEmail, IconePessoa, IconeTelefone } from '../components/conta/icones';
 import { destinoAposLogin, destinoSeguro, useSessaoCliente } from '../sessao/sessaoCliente';
 import { formatarTelefone } from '../utils/telefone';
 
@@ -43,8 +45,37 @@ const CadastroPage = () => {
   const [erros, setErros] = useState({});
   const [erroGeral, setErroGeral] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [pendente, setPendente] = useState(null);
+  const { definirCentral } = useOutletContext();
+
+  // Etapa "Quase lá": o AuthShell escurece a imagem e centraliza o cartão.
+  useEffect(() => {
+    definirCentral(Boolean(pendente));
+    return () => definirCentral(false);
+  }, [pendente, definirCentral]);
 
   if (status === 'logado') return <Navigate to={destinoAposLogin(cliente, voltar)} replace />;
+
+  // Conta Google nova: o Google não dá telefone, então a segunda etapa é aqui (token só em memória).
+  if (pendente) {
+    return (
+      <>
+        <title>Quase lá — Barbearia Novo Estilo</title>
+        <p className="auth-eyebrow">Primeiro acesso</p>
+        <h1>Quase lá</h1>
+        <p className="conta-sub">{`Olá, ${pendente.nome.split(' ')[0]}! Falta só o seu celular para concluir o cadastro.`}</p>
+        <CompletarGoogle
+          pendente={pendente}
+          voltar={voltar}
+          onExpirou={(mensagem) => {
+            setPendente(null);
+            setErroGeral(mensagem);
+          }}
+          onCancelar={() => setPendente(null)}
+        />
+      </>
+    );
+  }
 
   const alterar = (campo) => (e) => {
     const valor = campo === 'telefone' ? formatarTelefone(e.target.value) : e.target.value;
@@ -81,11 +112,16 @@ const CadastroPage = () => {
   const sufixo = params.get('voltar') ? `?voltar=${encodeURIComponent(voltar)}` : '';
 
   return (
-    <ContaLayout titulo="Criar conta" subtitulo="Seus dados ficam salvos para os próximos agendamentos.">
+    <>
+      <title>Criar conta — Barbearia Novo Estilo</title>
+      <p className="auth-eyebrow">Primeiro acesso</p>
+      <h1>Crie sua conta</h1>
+      <p className="conta-sub">Seus dados ficam salvos para os próximos agendamentos.</p>
       <Alerta>{erroGeral}</Alerta>
       <form onSubmit={handleSubmit} method="post" action="/cadastro" noValidate>
         <Campo
           label="Nome completo"
+          icone={<IconePessoa />}
           name="name"
           autoComplete="name"
           value={dados.nome}
@@ -96,6 +132,7 @@ const CadastroPage = () => {
         />
         <Campo
           label="E-mail"
+          icone={<IconeEmail />}
           tipo="email"
           name="email"
           autoComplete="email"
@@ -107,6 +144,7 @@ const CadastroPage = () => {
         />
         <Campo
           label="Celular (WhatsApp)"
+          icone={<IconeTelefone />}
           tipo="tel"
           name="tel"
           autoComplete="tel-national"
@@ -120,6 +158,7 @@ const CadastroPage = () => {
         />
         <CampoSenha
           label="Senha"
+          icone={<IconeCadeado />}
           name="new-password"
           autoComplete="new-password"
           value={dados.senha}
@@ -130,6 +169,7 @@ const CadastroPage = () => {
         />
         <CampoSenha
           label="Confirme a senha"
+          icone={<IconeCadeado />}
           name="confirm-password"
           autoComplete="new-password"
           value={dados.confirmacao}
@@ -165,13 +205,14 @@ const CadastroPage = () => {
           {enviando ? 'Criando conta…' : 'Criar conta'}
         </button>
       </form>
+      <BotaoGoogle texto="signup_with" voltar={voltar} onPendente={setPendente} onErro={setErroGeral} />
       <p className="conta-rodape">
         Já tem conta?{' '}
         <Link to={`/entrar${sufixo}`} className="conta-link">
           Entrar
         </Link>
       </p>
-    </ContaLayout>
+    </>
   );
 };
 
