@@ -13,6 +13,8 @@
 
 ## 2. Decisões que preciso do dono (bloqueiam o código)
 
+> **Respondidas em 2026-10-17** — ver `docs/context/decisoes.md` ("Pagamento online") e a Fase 9 de `docs/context/plano-agendamentos.md`, que substituem as sugestões abaixo: Mercado Pago; valor total; Pix + **débito** + "Pagar no salão"; reserva de **20 min** para todos; estorno automático sempre que o barbeiro autoriza o cancelamento; cartão salvo entra agora; o dono cria a conta.
+
 1. **Qual gateway?** Sugestão: **Mercado Pago** (Pix com confirmação automática + cartão, tokenização, taxas baixas, já citado nos docs). Alternativas: Asaas, Pagar.me, Stripe.
 2. **O que cobrar?** Valor **total** na hora, **sinal** (ex.: 30%) ou só garantir o horário? Define o que fica "a pagar" na barbearia.
 3. **Métodos online**: só Pix, só cartão ou os dois? Débito/parcelamento? (Sugestão: Pix + cartão de crédito à vista.)

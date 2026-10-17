@@ -97,6 +97,35 @@
   color: #1e5b22;
 }
 
+/* Aviso de dados pendentes na conta (Minha conta e agendamento) */
+.aviso-pendencias {
+  border-width: 2px;
+  border-color: var(--wine);
+}
+
+.aviso-pendencias-titulo {
+  display: block;
+  font-size: 15.5px;
+  margin-bottom: 4px;
+}
+
+.aviso-pendencias p {
+  margin: 0 0 4px;
+}
+
+.aviso-pendencias ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.aviso-pendencias li {
+  color: var(--wine);
+}
+
+.aviso-pendencias-btn {
+  display: inline-block;
+}
+
 .conta-alerta-aviso {
   background: rgba(199, 150, 30, 0.1);
   border-color: rgba(199, 150, 30, 0.45);

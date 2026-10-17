@@ -62,9 +62,29 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 - [x] Dashboard do admin ligado aos agendamentos reais (`GET /api/admin/dashboard`).
 - [x] Aviso de pedidos pendentes no menu lateral: item "Notificações" (sino) com ponto vermelho, página própria; barbeiro reagenda um agendamento pelo modal ("Reagendamento").
 
-## Pagamento com cartão (quando houver gateway)
+## Fase 9 — Pagamento online (Mercado Pago) — **decidido em 2026-10-17, não iniciado**
+Regras de negócio em [decisoes.md](decisoes.md), "Pagamento online". Valor total; Pix + débito online + "Pagar no salão"; reserva de 20 min; estorno automático quando o barbeiro cancela um agendamento pago; cartão salvo entra agora.
 - [x] Alertas "Deseja cadastrar o cartão?" / confirmação sem cadastrar (front).
-- [ ] Integrar gateway (ex.: Mercado Pago): tokenização no navegador; salvar no perfil só token + bandeira + 4 últimos dígitos; cartão salvo pré-selecionado nos próximos agendamentos; remover cartão em "Minha conta".
+- [ ] **A — Banco.** Migration `pagamentos` + `cartoes_salvos` + `eventos_gateway` (RLS + REVOKE):
+  - `agendamentos.status` ganha `aguardando_pagamento` e `expirado`; coluna `reserva_expira_em`. A reserva temporária **entra no `EXCLUDE`** (bloqueia o horário para todos); `expirado`, como `cancelado`, não bloqueia.
+  - Como uma constraint não pode depender de `now()`, a expiração é gravada: antes de criar/reagendar, na mesma transação, reservas vencidas viram `expirado`; um job periódico (a cada minuto) faz o mesmo para liberar a disponibilidade pública.
+  - No máximo **uma reserva temporária ativa por cliente** (índice único parcial) — impede alguém de prender vários horários.
+  - `pagamentos`: agendamento (FK RESTRICT), `id_externo` UNIQUE, método (`pix | debito`), `valor_centavos > 0`, status (`pendente | aprovado | recusado | expirado | estornado`), datas; um aprovado por agendamento.
+  - `cartoes_salvos`: cliente, id do cartão/cliente no Mercado Pago, bandeira, 4 últimos dígitos, validade. Nunca número nem CVV.
+  - `eventos_gateway`: id do evento UNIQUE (webhook idempotente).
+  - Enum `FormaPagamento`: `cartao` → `debito` (agendamentos antigos com `cartao` precisam de decisão na migration; hoje não há cobrança real, então nenhum foi pago de fato).
+- [ ] **B — Backend `src/pagamentos/`.** Interface `GatewayPagamento` (Mercado Pago real + fake para testes, como o `VerificadorGoogle`).
+  - "Reservar horário" com Pix/débito cria o agendamento `aguardando_pagamento` (expira em 20 min) e a cobrança: Pix com `date_of_expiration` = fim da reserva (QR + copia e cola); débito recebe só o **token** do cartão.
+  - Webhook `POST /api/pagamentos/webhook`: valida assinatura (`x-signature`), idempotente, **reconsulta o pagamento na API** antes de confirmar. Aprovado dentro do prazo ⇒ `agendado`.
+  - **Pagamento aprovado depois da expiração** (ex.: Pix pago no minuto 21) ⇒ se o horário ainda estiver livre, confirma; se outro cliente já pegou, **estorno automático** e aviso ao cliente.
+  - Consulta de status pelo cliente (polling do front); retomar a reserva ativa; rota que **desiste** da reserva (libera na hora).
+  - Cancelamento pelo admin (direto ou aprovando pedido) de agendamento pago ⇒ estorno total no Mercado Pago; falha no estorno fica registrada e visível no painel para nova tentativa (o cancelamento não é desfeito).
+  - Reagendar um agendamento pago mantém o pagamento (o preço não muda; só o horário).
+  - Cartão salvo: criar/listar/remover (`/api/clientes/me/cartoes`).
+  - Env: `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_PUBLIC_KEY` (só esta vai ao front), `RESERVA_PAGAMENTO_MINUTOS=20`; validadas em `env.validation.ts`.
+- [ ] **C — Frontend.** Passo de pagamento: Pix real (QR + contador de 20 min + espera da confirmação, sem "Já realizei o pagamento"); débito com o Card Payment Brick do Mercado Pago (dados do cartão não passam pelo nosso código); "Pagar no salão" igual a hoje. Reserva vencida ⇒ "Sessão expirada, por favor agende novamente" e volta ao passo 1. Cartão salvo pré-selecionado (o Mercado Pago ainda pede o CVV a cada pagamento); remover em "Minha conta". "Meus agendamentos" e Agenda do admin mostram o status do pagamento e do estorno.
+- [ ] **D — Testes e entrega.** Unit/e2e com gateway fake (aprovado, recusado, webhook duplicado, assinatura inválida, expiração, pago após expirar, valor adulterado, duas reservas simultâneas no mesmo horário, estorno) + teste de ponta a ponta no sandbox com a conta de teste do dono.
+- **Passos manuais (dono):** criar a conta Mercado Pago, criar a aplicação em "Suas integrações", passar as credenciais **de teste**; cadastrar a URL do webhook; depois ativar as credenciais de produção. Aplicar a migration.
 
 ## Fase 7 — Galeria "Nosso trabalho" no lugar de "Nossos serviços" (site) — **substituída em 2026-10-16**
 **Mudança de decisão:** a seção "Nossos serviços" foi **removida** e "Nossa história" (`About.jsx`, agora com fundo claro) ocupa o lugar dela, logo depois do hero. A galeria/vídeo abaixo **não** será feita no formato original; o espaço de fotos de cortes ficou nas **Avaliações** (Fase 8). Falta ainda trocar a ilustração SVG do Sobre por uma foto real, reescrever o texto e corrigir os números fixos ("3 especialistas", "6 serviços").

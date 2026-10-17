@@ -27,10 +27,16 @@ NestJS + PostgreSQL + Prisma no back; frontend atual (React/Vite). Dono único �
 
 ## Alinhando com cliente...
 - **Duração de cada serviço:** o dono vai definir/alinhar com o desenvolvedor o tempo realista de cada serviço, para evitar cliente esperando por atendimento anterior que estourou. Até lá, as durações atuais (`duration`) são placeholders.
-- **Pagamento:** verificando se **Pix estático + presencial** já atende ou se há necessidade de sinal/cobrança online (gateway, ex.: Mercado Pago). Premissa de trabalho: MVP sem gateway; remover aba "Cartão" do site se confirmado.
+## Pagamento online (decidido em 2026-10-17, revertendo "MVP sem gateway")
+- **Gateway: Mercado Pago.** Conta criada pelo **dono** (o dinheiro cai na conta dele); credenciais de teste primeiro, produção depois. Plano em [plano-agendamentos.md](plano-agendamentos.md), Fase 9; briefing em `GatewayPagamento.md`.
+- **Cobra o valor total** do serviço (sem sinal). O valor vem do banco, nunca do navegador.
+- **Formas:** **Pix** e **cartão de débito** online + **"Pagar no salão"** (dinheiro/maquininha, sem cobrança online). A aba de cartão de crédito sai.
+- **Reserva temporária, como no cinema:** ao clicar em "Reservar horário" com Pix/débito, o horário fica **bloqueado para todos por 20 min** aguardando o pagamento. Pagou dentro do prazo ⇒ agendamento confirmado. Não pagou ⇒ desistência: o horário é liberado e, se o cliente tentar continuar, vê **"Sessão expirada, por favor agende novamente"** e o fluxo de agendamento recomeça do início. "Pagar no salão" confirma na hora, sem reserva temporária.
+- **Estorno:** só o barbeiro cancela (direto ou aprovando o pedido do cliente). **Cancelamento autorizado de agendamento pago ⇒ estorno total automático**, a qualquer momento (sem prazo mínimo). Cliente continua sem cancelar sozinho.
+- **Cartão salvo no perfil entra agora** (token do Mercado Pago + bandeira + 4 últimos dígitos; nunca o número nem o CVV).
 
 ## Em aberto
-- **Salvar cartão no perfil** (pedido do dono, 2026-10-11): depois de preencher o cartão, perguntar "Deseja cadastrar o cartão?"; se não, avisar que no próximo agendamento será preciso informar de novo e pedir confirmação. Dados de cartão **não podem** ser guardados no nosso banco (PCI-DSS; CVV nunca) — só via tokenização de um gateway (ex.: Mercado Pago), guardando token + bandeira + 4 últimos dígitos. Depende da decisão do gateway (ver "Pagamento"). **Decidido:** os alertas já estão no front (`Booking.jsx`, `ConfirmDialog`); o salvamento real entra junto com o gateway.
+- **Salvar cartão no perfil** (pedido do dono, 2026-10-11): depois de preencher o cartão, perguntar "Deseja cadastrar o cartão?"; se não, avisar que no próximo agendamento será preciso informar de novo e pedir confirmação. Dados de cartão **não podem** ser guardados no nosso banco (PCI-DSS; CVV nunca) — só via tokenização de um gateway (ex.: Mercado Pago), guardando token + bandeira + 4 últimos dígitos. **Decidido:** os alertas já estão no front (`Booking.jsx`, `ConfirmDialog`); o salvamento real entra junto com o gateway (Mercado Pago, Fase 9 — ver "Pagamento online").
 - Granularidade dos slots (hoje 30 min, constante `PASSO_MINUTOS` em `backend/src/agendamentos/horarios.ts`). Expediente e almoço agora são configuráveis no painel (tabela `configuracoes`); os valores de fábrica ainda são premissa até o dono confirmar.
 - Catálogo de serviços: a lista atual (Corte Feminino, Escova, Hidratação, Coloração…) parece de salão, não de barbearia — confirmar com o dono.
 - Termos de uso/privacidade definitivos.

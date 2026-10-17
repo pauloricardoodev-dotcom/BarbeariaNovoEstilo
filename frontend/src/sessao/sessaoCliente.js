@@ -19,6 +19,15 @@ export const contaVerificada = (cliente) =>
 export const destinoSeguro = (valor, padrao = '/') =>
   typeof valor === 'string' && /^\/(?![/\\])/.test(valor) ? valor : padrao;
 
+/**
+ * Telas que nunca são destino de volta do login. "Sair" só existe em Minha conta, então o
+ * próximo login voltaria para lá e o cliente acharia que precisa alterar algo no perfil.
+ */
+const SEM_VOLTA_APOS_LOGIN = ['/minha-conta', '/verificar'];
+
 /** Para onde ir depois de entrar: conta ainda não verificada passa antes pela verificação. */
-export const destinoAposLogin = (cliente, voltar) =>
-  contaVerificada(cliente) ? voltar : `/verificar?voltar=${encodeURIComponent(voltar)}`;
+export const destinoAposLogin = (cliente, voltar) => {
+  const caminho = voltar.split(/[?#]/)[0];
+  const destino = SEM_VOLTA_APOS_LOGIN.includes(caminho) ? '/' : voltar;
+  return contaVerificada(cliente) ? destino : `/verificar?voltar=${encodeURIComponent(destino)}`;
+};

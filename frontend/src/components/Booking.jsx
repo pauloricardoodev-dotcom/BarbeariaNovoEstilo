@@ -7,6 +7,7 @@ import ConfirmDialog from './ConfirmDialog';
 import PixCodigo, { PixQr } from './PixCodigo';
 import { gerarPayloadPix } from '../utils/pix';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
+import AvisoPendencias from './conta/AvisoPendencias';
 import { exibirTelefone } from '../utils/telefone';
 import useConfiguracoes from '../configuracao/useConfiguracoes';
 import useDiasFechados from '../configuracao/useDiasFechados';
@@ -55,7 +56,6 @@ const Booking = ({ servicos, preSelectedService }) => {
   const [payMethod, setPayMethod] = useState('pix');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [avisoVerificacao, setAvisoVerificacao] = useState(false);
   const [cartao, setCartao] = useState(CARTAO_VAZIO);
   const [erroCartao, setErroCartao] = useState('');
   // Pergunta sobre salvar o cartão: null | 'salvar' | 'confirmarSemSalvar'
@@ -179,7 +179,6 @@ const Booking = ({ servicos, preSelectedService }) => {
     setSelectedTime(null);
     setHorarios([]);
     setPayMethod('pix');
-    setAvisoVerificacao(false);
     setErroEnvio('');
     document.getElementById('inicio').scrollIntoView({ behavior: 'smooth' });
   };
@@ -242,7 +241,7 @@ const Booking = ({ servicos, preSelectedService }) => {
   // Agendar exige e-mail e WhatsApp confirmados.
   const handleIrParaPagamento = () => {
     if (!contaVerificada(cliente)) {
-      setAvisoVerificacao(true);
+      document.getElementById('aviso-pendencias-agendamento')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     setStep(3);
@@ -441,14 +440,6 @@ const Booking = ({ servicos, preSelectedService }) => {
         {erroEnvio && step === 2 && (
           <div className="conta-alerta conta-alerta-erro booking-aviso" role="alert">
             {erroEnvio}
-          </div>
-        )}
-        {avisoVerificacao && (
-          <div className="conta-alerta conta-alerta-aviso booking-aviso" role="alert">
-            Para agendar, confirme seu e-mail e seu WhatsApp.{' '}
-            <Link to="/verificar?voltar=%2F%23agendamento" className="conta-link">
-              Confirmar agora
-            </Link>
           </div>
         )}
         <div className="step-nav">
@@ -696,6 +687,8 @@ const Booking = ({ servicos, preSelectedService }) => {
 
         <div className="booking-shell">
           {step !== 4 && renderProgress()}
+          {/* Conta incompleta: aviso fixo no topo (o "Continuar" do passo 2 rola até ele). */}
+          {step !== 4 && <div id="aviso-pendencias-agendamento"><AvisoPendencias cliente={cliente} className="booking-aviso" /></div>}
           {renderStep1()}
           {renderDateStep()}
           {renderPayment()}

@@ -2,9 +2,20 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { atualizarPerfil, trocarSenha } from '../api/clientes';
 import Campo, { CampoSenha } from '../components/conta/Campo';
+import AvisoPendencias from '../components/conta/AvisoPendencias';
 import ContaLayout, { Alerta } from '../components/conta/ContaLayout';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone, formatarTelefone } from '../utils/telefone';
+
+// Campo de contato ainda não confirmado: fica vermelho, com o atalho para confirmar.
+const NaoConfirmado = () => (
+  <>
+    Não confirmado — confirme para poder agendar.{' '}
+    <Link to="/verificar" className="conta-link">
+      Confirmar agora
+    </Link>
+  </>
+);
 
 const MeusDados = ({ cliente, aoSalvar }) => {
   const [nome, setNome] = useState(cliente.nome);
@@ -75,7 +86,8 @@ const MeusDados = ({ cliente, aoSalvar }) => {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          dica={cliente.emailVerificado ? 'Confirmado' : 'Ainda não confirmado'}
+          dica="Confirmado"
+          erro={!cliente.emailVerificado && <NaoConfirmado />}
           maxLength={254}
         />
         {emailMudou && cliente.temSenha && (
@@ -96,7 +108,8 @@ const MeusDados = ({ cliente, aoSalvar }) => {
           inputMode="tel"
           value={telefone}
           onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
-          dica={cliente.telefoneVerificado ? 'Confirmado' : 'Ainda não confirmado'}
+          dica="Confirmado"
+          erro={!cliente.telefoneVerificado && <NaoConfirmado />}
           maxLength={30}
         />
         <button
@@ -190,19 +203,12 @@ const MinhaContaPage = () => {
 
   const handleSair = async () => {
     await sair();
-    navigate('/', { replace: true });
+    navigate('/entrar', { replace: true });
   };
 
   return (
     <ContaLayout titulo={`Olá, ${primeiroNome}!`} subtitulo="Gerencie seus dados de acesso." largo>
-      {!contaVerificada(cliente) && (
-        <div className="conta-alerta conta-alerta-aviso" role="status">
-          Confirme seu e-mail e seu WhatsApp para poder agendar.{' '}
-          <Link to="/verificar" className="conta-link">
-            Confirmar agora
-          </Link>
-        </div>
-      )}
+      <AvisoPendencias cliente={cliente} destino="/verificar" textoBotao="Confirmar agora" />
       <MeusDados cliente={cliente} aoSalvar={definirCliente} />
       <AlterarSenha email={cliente.email} temSenha={cliente.temSenha} aoTrocar={definirCliente} />
       <div className="conta-secao conta-secao-sair">
