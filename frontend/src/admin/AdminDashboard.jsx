@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/admin.css';
 import AdminPanel from './AdminPanel';
+import Carregando from '../components/Carregando';
 import LoginPage from './components/LoginPage';
 import { getCurrentUser, logout } from './api/auth';
 
@@ -44,13 +45,7 @@ const AdminDashboard = () => {
 
   let content;
   if (status === 'loading') {
-    content = (
-      <div className="login-page d-flex align-items-center justify-content-center">
-        <div className="spinner-border text-secondary" role="status">
-          <span className="visually-hidden">Carregando…</span>
-        </div>
-      </div>
-    );
+    content = <Carregando />;
   } else if (status === 'error') {
     content = (
       <div className="login-page d-flex flex-column align-items-center justify-content-center gap-3 p-3 text-center">

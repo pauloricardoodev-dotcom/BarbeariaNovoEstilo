@@ -1,0 +1,92 @@
+.carregando {
+  --car-fio: #c9a66b;
+  --car-aco: #d9d9d6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.carregando--tela {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #121214;
+  color: #f2f2f0;
+}
+
+.carregando__cena {
+  width: min(280px, 70vw);
+  height: auto;
+  overflow: visible;
+}
+
+.carregando__texto {
+  margin: 0;
+  font: 500 0.8rem/1 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--car-fio);
+}
+
+.carregando__fio,
+.carregando__ponta {
+  fill: none;
+  stroke: var(--car-fio);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.carregando__pente rect { fill: #b08d57; }
+.carregando__lamina path,
+.carregando__lamina circle { fill: var(--car-aco); }
+.carregando__lamina circle { fill: none; stroke: var(--car-aco); stroke-width: 3; }
+.carregando__eixo { fill: #9b2635; }
+
+/* Ciclo de 3s: pente alisa (0–38%), tesoura corta duas vezes (42–62%),
+   pontas caem e o cabelo "volta" para o próximo ciclo. */
+.carregando__pente {
+  animation: car-pente 3s ease-in-out infinite;
+}
+.carregando__lamina {
+  transform-origin: 150px 80px;
+}
+.carregando__lamina--cima { animation: car-cima 3s ease-in-out infinite; }
+.carregando__lamina--baixo { animation: car-baixo 3s ease-in-out infinite; }
+.carregando__ponta {
+  transform-origin: center;
+  animation: car-ponta 3s ease-in infinite;
+}
+
+@keyframes car-pente {
+  0% { transform: translateY(0); opacity: 1; }
+  38% { transform: translateY(60px); opacity: 1; }
+  44%, 100% { transform: translateY(60px); opacity: 0; }
+  /* volta invisível ao topo antes de reaparecer */
+  99% { opacity: 0; }
+}
+@keyframes car-cima {
+  0%, 40%, 52%, 64%, 100% { transform: rotate(0); }
+  46%, 58% { transform: rotate(-16deg); }
+  49%, 61% { transform: rotate(2deg); }
+}
+@keyframes car-baixo {
+  0%, 40%, 52%, 64%, 100% { transform: rotate(0); }
+  46%, 58% { transform: rotate(16deg); }
+  49%, 61% { transform: rotate(-2deg); }
+}
+@keyframes car-ponta {
+  0%, 60% { transform: translateY(0) rotate(0); opacity: 1; }
+  90% { transform: translateY(34px) rotate(40deg); opacity: 0; }
+  92% { transform: translateY(0) rotate(0); opacity: 0; }
+  100% { transform: translateY(0) rotate(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carregando__pente,
+  .carregando__lamina--cima,
+  .carregando__lamina--baixo,
+  .carregando__ponta { animation: none; }
+  .carregando__pente { opacity: 0; }
+}
