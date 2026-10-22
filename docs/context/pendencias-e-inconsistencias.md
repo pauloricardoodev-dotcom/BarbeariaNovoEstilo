@@ -3,7 +3,7 @@
 ## Funcionalidades simuladas / incompletas
 - Backend tem login do admin e contas de cliente (Fases 1 e 3: cadastro, login, verificação, minha conta), mas o agendamento ainda não exige login e **não chega** ao admin; o resto não persiste.
 - `RefatorancaoVisual.md` citado nos docs não existe no repositório.
-- Pagamento (Pix QR, cartão) é demonstração; cartão sem validação.
+- Pagamento online (Mercado Pago) implementado nas fases A–C, **testado só com gateway fake**: falta validar no sandbox (assinatura do webhook, resposta do Pix/cartão, CPF no token, estorno). Com `PAGAMENTO_PROVEDOR=desligado` o site volta ao fluxo antigo (Pix estático e cartão de demonstração, sem cobrança). Pedidos de cancelamento: o "botão de estorno" é aprovar a solicitação.
 - Configurações salva (nome, contato, expediente, antecedência e janela); a seção de notificações/lembretes não existe ainda. Botão de notificações/Navbar legados não usados.
 - Aba Profissionais removida do painel (o cliente quer de volta no futuro); `ProfessionalsTab.jsx` segue no repositório, sem rota e com dados de mock.
 

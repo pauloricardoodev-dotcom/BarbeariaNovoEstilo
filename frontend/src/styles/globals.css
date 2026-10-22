@@ -1909,3 +1909,30 @@ footer .info-list li {
   background: var(--white);
   color: var(--navy);
 }
+
+/* Espera da confirmação do pagamento online (Pix/cartão) */
+.aguardando-pgto h3 {
+  margin-bottom: 6px;
+}
+
+.aguardando-valor {
+  font-family: var(--serif);
+  font-size: 32px;
+  color: var(--wine);
+  margin: 4px 0 16px;
+}
+
+.aguardando-pix {
+  margin-bottom: 16px;
+}
+
+.aguardando-prazo {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.aguardando-prazo b {
+  color: var(--wine);
+  font-variant-numeric: tabular-nums;
+}

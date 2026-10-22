@@ -6,10 +6,16 @@ const PAGAMENTOS = {
   presencial: { rotulo: 'Dinheiro', classe: 'badge-pgto-dinheiro' },
 };
 
-const PagamentoBadge = ({ pagamento }) => {
+// Pagamento online: "aguardando" = reserva provisória sem pagar; "pago" = aprovado pelo gateway.
+const PagamentoBadge = ({ pagamento, aguardando = false, pago = false }) => {
+  if (aguardando) {
+    return <span className="badge rounded-pill badge-pgto-aguardando">Aguardando pagamento</span>;
+  }
   const info = PAGAMENTOS[pagamento];
   if (!info) return null;
-  return <span className={`badge rounded-pill ${info.classe}`}>{info.rotulo}</span>;
+  return (
+    <span className={`badge rounded-pill ${info.classe}`}>{pago ? `Pago · ${info.rotulo}` : info.rotulo}</span>
+  );
 };
 
 export default PagamentoBadge;

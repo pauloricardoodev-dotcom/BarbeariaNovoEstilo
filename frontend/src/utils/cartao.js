@@ -60,3 +60,24 @@ export const validarCartao = ({ numero, nome, validade, cvv }, hoje = new Date()
   if (cvv.length < 3) return 'CVV inválido.';
   return '';
 };
+
+/** "12345678909" → "123.456.789-09". */
+export const formatarCpf = (valor) =>
+  digitos(valor)
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+
+/** CPF com os dois dígitos verificadores corretos (pega erro de digitação, não garante que exista). */
+export const cpfValido = (valor) => {
+  const c = digitos(valor);
+  if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+  const digito = (tamanho) => {
+    let soma = 0;
+    for (let i = 0; i < tamanho; i++) soma += Number(c[i]) * (tamanho + 1 - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  return digito(9) === Number(c[9]) && digito(10) === Number(c[10]);
+};

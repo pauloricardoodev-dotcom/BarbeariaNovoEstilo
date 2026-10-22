@@ -143,6 +143,8 @@ describe('Agendamentos (e2e)', () => {
     return {
       ...a,
       preco: dec(a.preco),
+      expiraEm: null,
+      pagamentos: [],
       servico: { id: a.servicoId, nome: 'Corte Masculino' },
       cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone },
       solicitacoes: (soPendentes ? decididas.filter((s) => s.status === 'pendente') : decididas).slice(0, 1),
@@ -248,7 +250,7 @@ describe('Agendamentos (e2e)', () => {
         },
       },
       configuracao: {
-        findUnique: () => Promise.resolve({ ...configuracao }),
+        findFirst: () => Promise.resolve({ ...configuracao }),
         upsert: ({ update }: any) => {
           configuracao = { ...configuracao, ...update };
           return Promise.resolve({ ...configuracao });

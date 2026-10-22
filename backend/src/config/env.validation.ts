@@ -1,6 +1,7 @@
 export type ProvedorEmail = 'log' | 'resend';
 export type ProvedorWhatsApp = 'log' | 'cloud_api';
 export type ProvedorArmazenamento = 'local' | 'supabase';
+export type ProvedorPagamento = 'desligado' | 'mercadopago';
 
 export interface Env {
   DATABASE_URL: string;
@@ -31,6 +32,16 @@ export interface Env {
   /** Só no backend, nunca no frontend. */
   SUPABASE_SERVICE_ROLE_KEY: string;
   SUPABASE_BUCKET_AVALIACOES: string;
+  /** Cobrança online. "desligado" mantém o fluxo antigo (Pix estático/presencial, sem reserva provisória). */
+  PAGAMENTO_PROVEDOR: ProvedorPagamento;
+  /** Só no backend, nunca no frontend. */
+  MERCADOPAGO_ACCESS_TOKEN: string;
+  /** Assinatura secreta do webhook (painel do Mercado Pago > Webhooks). */
+  MERCADOPAGO_WEBHOOK_SECRET: string;
+  /** Chave pública (não é segredo): o site a usa para gerar o token do cartão no navegador. */
+  MERCADOPAGO_PUBLIC_KEY: string;
+  /** Por quanto tempo o horário fica reservado esperando o pagamento online. */
+  RESERVA_PAGAMENTO_MINUTOS: number;
 }
 
 function texto(valor: unknown, padrao = ''): string {
@@ -114,6 +125,21 @@ export function validarEnv(config: Record<string, unknown>): Env {
     }
   }
 
+  const pagamentoProvedor = texto(config.PAGAMENTO_PROVEDOR, 'desligado');
+  const mpToken = texto(config.MERCADOPAGO_ACCESS_TOKEN);
+  const mpSegredo = texto(config.MERCADOPAGO_WEBHOOK_SECRET);
+  if (pagamentoProvedor !== 'desligado' && pagamentoProvedor !== 'mercadopago') {
+    erros.push('PAGAMENTO_PROVEDOR deve ser "desligado" ou "mercadopago".');
+  } else if (pagamentoProvedor === 'mercadopago' && (!mpToken || !mpSegredo)) {
+    erros.push(
+      'PAGAMENTO_PROVEDOR=mercadopago exige MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_WEBHOOK_SECRET.',
+    );
+  }
+  const reservaMinutos = Number(config.RESERVA_PAGAMENTO_MINUTOS ?? 10);
+  if (!Number.isInteger(reservaMinutos) || reservaMinutos < 1 || reservaMinutos > 60) {
+    erros.push('RESERVA_PAGAMENTO_MINUTOS deve ser um inteiro entre 1 e 60.');
+  }
+
   if (erros.length > 0) {
     throw new Error(`Configuração inválida:\n- ${erros.join('\n- ')}`);
   }
@@ -146,5 +172,10 @@ export function validarEnv(config: Record<string, unknown>): Env {
     SUPABASE_URL: supabaseUrl,
     SUPABASE_SERVICE_ROLE_KEY: supabaseChave,
     SUPABASE_BUCKET_AVALIACOES: texto(config.SUPABASE_BUCKET_AVALIACOES, 'avaliacoes'),
+    PAGAMENTO_PROVEDOR: pagamentoProvedor as ProvedorPagamento,
+    MERCADOPAGO_ACCESS_TOKEN: mpToken,
+    MERCADOPAGO_WEBHOOK_SECRET: mpSegredo,
+    MERCADOPAGO_PUBLIC_KEY: texto(config.MERCADOPAGO_PUBLIC_KEY),
+    RESERVA_PAGAMENTO_MINUTOS: reservaMinutos,
   };
 }

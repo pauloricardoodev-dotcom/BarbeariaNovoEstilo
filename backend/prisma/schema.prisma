@@ -183,6 +183,9 @@ model Agendamento {
   status         StatusAgendamento @default(agendado)
   canceladoEm    DateTime?         @map("cancelado_em") @db.Timestamptz(6)
   canceladoPor   String?           @map("cancelado_por") @db.Uuid
+  /// Reserva provisória aguardando pagamento online: preenchido = horário seguro até esta data; o backend
+  /// zera ao confirmar o pagamento ou cancela o agendamento ao vencer. Ver migration 20261022150000_pagamentos.
+  expiraEm       DateTime?         @map("expira_em") @db.Timestamptz(6)
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   /// Atualizado pelo trigger trg_agendamentos_updated_at.
   updatedAt      DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -192,6 +195,7 @@ model Agendamento {
   cancelador     UsuarioAdmin?             @relation(fields: [canceladoPor], references: [id], onDelete: Restrict)
   reagendamentos Reagendamento[]
   solicitacoes   SolicitacaoCancelamento[]
+  pagamentos     Pagamento[]
 
   @@index([inicio])
   @@index([clienteId, inicio])
@@ -276,4 +280,60 @@ model AvaliacaoFoto {
 
   @@unique([avaliacaoId, posicao])
   @@map("avaliacao_fotos")
+}
+
+enum StatusPagamento {
+  pendente
+  aprovado
+  recusado
+  cancelado
+  estornado
+  expirado
+
+  @@map("status_pagamento")
+}
+
+/// Cobrança online (Pix ou cartão) de um agendamento, sempre pelo valor total. Gravada ANTES de cobrar no gateway
+/// (idExterno nulo até a resposta). Valor, método e agendamento são imutáveis; transições de status e
+/// "um aprovado/um pendente por agendamento" são garantidos por trigger/índices na migration 20261022150000_pagamentos.
+model Pagamento {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agendamentoId       String          @map("agendamento_id") @db.Uuid
+  gateway             String
+  idExterno           String?         @map("id_externo")
+  /// Só pix ou cartao (CHECK); presencial não gera pagamento.
+  metodo              FormaPagamento
+  valorCentavos       Int             @map("valor_centavos")
+  status              StatusPagamento @default(pendente)
+  pixCopiaCola        String?         @map("pix_copia_cola")
+  /// Validade da cobrança Pix (obrigatória para pix).
+  expiraEm            DateTime?       @map("expira_em") @db.Timestamptz(6)
+  cartaoBandeira      String?         @map("cartao_bandeira")
+  cartaoUltimosQuatro String?         @map("cartao_ultimos_quatro")
+  aprovadoEm          DateTime?       @map("aprovado_em") @db.Timestamptz(6)
+  estornadoEm         DateTime?       @map("estornado_em") @db.Timestamptz(6)
+  /// Resposta do gateway para auditoria; sem dados sensíveis.
+  payloadBruto        Json?           @map("payload_bruto")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Atualizado pelo trigger trg_pagamentos_updated_at.
+  updatedAt           DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  agendamento         Agendamento     @relation(fields: [agendamentoId], references: [id], onDelete: Restrict)
+
+  @@unique([gateway, idExterno])
+  @@index([agendamentoId])
+  @@map("pagamentos")
+}
+
+/// Webhooks recebidos do gateway. (gateway, idEvento) único = idempotência: o mesmo evento não é processado duas vezes.
+model EventoGateway {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gateway      String
+  idEvento     String    @map("id_evento")
+  tipo         String
+  payload      Json?
+  recebidoEm   DateTime  @default(now()) @map("recebido_em") @db.Timestamptz(6)
+  processadoEm DateTime? @map("processado_em") @db.Timestamptz(6)
+
+  @@unique([gateway, idEvento])
+  @@map("eventos_gateway")
 }

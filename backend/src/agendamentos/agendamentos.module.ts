@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PagamentosModule } from '../pagamentos/pagamentos.module.js';
 import { ConfiguracoesModule } from '../configuracoes/configuracoes.module.js';
 import { DiasModule } from '../dias/dias.module.js';
 import {
@@ -13,7 +14,7 @@ import { DashboardController } from './dashboard.controller.js';
 import { DashboardService } from './dashboard.service.js';
 
 @Module({
-  imports: [ConfiguracoesModule, DiasModule],
+  imports: [ConfiguracoesModule, DiasModule, PagamentosModule],
   controllers: [
     DashboardController,
     DisponibilidadeController,

@@ -14,7 +14,11 @@ const Pedido = ({ solicitacao: s, onDecidida }) => {
     setEnviando(true);
     try {
       await decidirSolicitacao(s.id, { aprovar, resposta: resposta.trim() });
-      onDecidida(aprovar ? 'Pedido aprovado: o agendamento foi cancelado.' : 'Pedido recusado: o agendamento foi mantido.');
+      onDecidida(
+        aprovar
+          ? `Pedido aprovado: o agendamento foi cancelado${a.pago ? ' e o valor foi devolvido ao cliente' : ''}.`
+          : 'Pedido recusado: o agendamento foi mantido.',
+      );
     } catch (err) {
       setErro(err.message);
       setEnviando(false);
@@ -33,6 +37,11 @@ const Pedido = ({ solicitacao: s, onDecidida }) => {
         <div className="small text-secondary">Pedido em {formatarInstante(s.criadaEm)}</div>
       </div>
       <p className="mt-2 mb-2">“{s.motivo}”</p>
+      {a.pago && (
+        <p className="small text-danger mb-2">
+          Pago online: aprovar o cancelamento devolve o valor total ao cliente pelo Mercado Pago.
+        </p>
+      )}
       {erro && (
         <div className="alert alert-danger py-2" role="alert">
           {erro}

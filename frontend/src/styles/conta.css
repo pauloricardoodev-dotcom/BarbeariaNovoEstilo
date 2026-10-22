@@ -655,3 +655,14 @@ nav.main-nav {
   font-weight: 600;
   cursor: pointer;
 }
+
+.agenda-status-aguardando {
+  background: rgba(176, 141, 87, 0.18);
+  color: #8a6a35;
+}
+
+.agenda-pago {
+  font-size: 13px;
+  color: #2e7d32;
+  font-weight: 600;
+}

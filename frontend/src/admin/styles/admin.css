@@ -620,6 +620,11 @@
   color: #fff;
 }
 
+.badge-pgto-aguardando {
+  background-color: #ffc107;
+  color: #1c1d1f;
+}
+
 .badge-pgto-dinheiro {
   background-color: #198754;
   color: #fff;

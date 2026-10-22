@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { WEEKDAYS, MONTHS, STEP_LABELS } from '../data/constants';
 import { consultarDisponibilidade, criarAgendamento } from '../api/agendamentos';
+import { iniciarPix, pagarComCartao } from '../api/pagamentos';
+import AguardandoPagamento from './AguardandoPagamento';
+import usePagamentoOnline from '../configuracao/usePagamentoOnline';
+import { criarTokenCartao } from '../utils/mercadopago';
 import { diaAgendavel, janelaDeAgendamento, separarPeriodos } from '../utils/datas';
 import ConfirmDialog from './ConfirmDialog';
 import PixCodigo, { PixQr } from './PixCodigo';
@@ -11,6 +15,8 @@ import { exibirTelefone } from '../utils/telefone';
 import useConfiguracoes from '../configuracao/useConfiguracoes';
 import useDiasFechados from '../configuracao/useDiasFechados';
 import {
+  cpfValido,
+  formatarCpf,
   formatarCvv,
   formatarNomeCartao,
   formatarNumeroCartao,
@@ -18,18 +24,21 @@ import {
   validarCartao,
 } from '../utils/cartao';
 
-const CARTAO_VAZIO = { numero: '', nome: '', validade: '', cvv: '' };
+const CARTAO_VAZIO = { numero: '', nome: '', validade: '', cvv: '', cpf: '' };
 const MASCARAS_CARTAO = {
   numero: formatarNumeroCartao,
   nome: formatarNomeCartao,
   validade: formatarValidade,
   cvv: formatarCvv,
+  cpf: formatarCpf,
 };
 
 // Passos: 1 Serviço · 2 Data e horário · 3 Pagamento · 4 Confirmação.
 // Os dados do cliente vêm do perfil (login obrigatório), sem etapa de identificação.
 const Booking = ({ servicos, preSelectedService }) => {
   const { cliente } = useSessaoCliente();
+  // Pagamento online (Mercado Pago) ligado no servidor? Desligado = fluxo antigo.
+  const pgto = usePagamentoOnline();
   const configuracoes = useConfiguracoes();
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
@@ -60,6 +69,9 @@ const Booking = ({ servicos, preSelectedService }) => {
   const [erroCartao, setErroCartao] = useState('');
   // Pergunta sobre salvar o cartão: null | 'salvar' | 'confirmarSemSalvar'
   const [dialogoCartao, setDialogoCartao] = useState(null);
+  // Pagamento online: reserva provisória do horário ({ id, expiraEm }) e a tela de espera da confirmação.
+  const [reserva, setReserva] = useState(null);
+  const [espera, setEspera] = useState(null);
 
   // Handle pre-selected service from other components
   useEffect(() => {
@@ -94,6 +106,7 @@ const Booking = ({ servicos, preSelectedService }) => {
   const escolherData = (data) => {
     setSelectedDate(data);
     setSelectedTime(null);
+    setReserva(null);
     setErroEnvio('');
     carregarHorarios(data, service);
   };
@@ -102,6 +115,7 @@ const Booking = ({ servicos, preSelectedService }) => {
   const escolherServico = (s) => {
     if (service && service.id !== s.id) {
       consultaAtual.current++;
+      setReserva(null);
       setSelectedDate(null);
       setSelectedTime(null);
       setHorarios([]);
@@ -179,6 +193,8 @@ const Booking = ({ servicos, preSelectedService }) => {
     setSelectedTime(null);
     setHorarios([]);
     setPayMethod('pix');
+    setReserva(null);
+    setEspera(null);
     setAvisoVerificacao(false);
     setErroEnvio('');
     document.getElementById('inicio').scrollIntoView({ behavior: 'smooth' });
@@ -191,9 +207,13 @@ const Booking = ({ servicos, preSelectedService }) => {
 
   // "Pagar": com os dados válidos, pergunta se o cliente quer cadastrar o cartão.
   const handleCardPayment = () => {
-    const erro = validarCartao(cartao);
+    const erro = validarCartao(cartao) || (pgto.online && !cpfValido(cartao.cpf) ? 'CPF do titular inválido.' : '');
     if (erro) {
       setErroCartao(erro);
+      return;
+    }
+    if (pgto.online) {
+      pagarOnline('cartao');
       return;
     }
     setDialogoCartao('salvar');
@@ -237,6 +257,85 @@ const Booking = ({ servicos, preSelectedService }) => {
     } finally {
       setEnviando(false);
     }
+  };
+
+  // Pagamento online: reserva o horário (10 min) e cobra. Quem confirma é o servidor (webhook do gateway);
+  // aqui só mostramos o andamento. O cartão vira token no navegador e nunca passa pelo nosso backend.
+  const pagarOnline = async (metodo) => {
+    if (enviando) return;
+    setErroEnvio('');
+    setErroCartao('');
+    setEnviando(true);
+    let criouAgora = false;
+    try {
+      let atual = reserva;
+      if (!atual) {
+        const ag = await criarAgendamento({
+          servicoId: service.id,
+          data: selectedDate,
+          hora: selectedTime,
+          pagamento: metodo,
+        });
+        criouAgora = true;
+        if (!ag.aguardandoPagamento) {
+          // Nada a cobrar (serviço sem preço): já está confirmado.
+          setCartao(CARTAO_VAZIO);
+          setStep(4);
+          return;
+        }
+        atual = { id: ag.id, expiraEm: ag.expiraPagamentoEm };
+        setReserva(atual);
+      }
+
+      if (metodo === 'pix') {
+        const pagamento = await iniciarPix(atual.id);
+        setEspera({ ...atual, pixCopiaCola: pagamento.pixCopiaCola });
+      } else {
+        const dadosToken = await criarTokenCartao(pgto.chavePublica, cartao);
+        setCartao(CARTAO_VAZIO); // o token basta; não mantém número/CVV na memória da página
+        const pagamento = await pagarComCartao(atual.id, dadosToken);
+        if (pagamento.status === 'aprovado') {
+          setReserva(null);
+          setStep(4);
+        } else {
+          setEspera({ ...atual, pixCopiaCola: null });
+        }
+      }
+    } catch (err) {
+      if (err.status === 401) {
+        setErroEnvio('Sua sessão expirou. Entre novamente para agendar.');
+      } else if (err.status === 402) {
+        // Cartão recusado: a reserva continua; dá para tentar outro cartão ou pagar com Pix.
+        setErroEnvio(err.message);
+      } else if (err.status === 409 || (err.status === 400 && criouAgora)) {
+        // Reserva vencida, ou horário tomado antes de reservar: escolher outro horário.
+        setReserva(null);
+        setErroEnvio(err.message);
+        setSelectedTime(null);
+        setStep(2);
+        carregarHorarios(selectedDate, service);
+      } else {
+        setErroEnvio(err.message);
+      }
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const handlePagamentoConfirmado = () => {
+    setEspera(null);
+    setReserva(null);
+    setStep(4);
+  };
+
+  // Reserva vencida (ou pagamento recusado/cancelado): o horário foi liberado.
+  const handlePagamentoEncerrado = () => {
+    setEspera(null);
+    setReserva(null);
+    setErroEnvio('O tempo para pagar acabou e o horário foi liberado. Escolha o horário novamente.');
+    setSelectedTime(null);
+    setStep(2);
+    carregarHorarios(selectedDate, service);
   };
 
   // Agendar exige e-mail e WhatsApp confirmados.
@@ -373,7 +472,10 @@ const Booking = ({ servicos, preSelectedService }) => {
         key={t}
         type="button"
         className={`time-slot ${selectedTime === t ? 'selected' : ''}`}
-        onClick={() => setSelectedTime(t)}
+        onClick={() => {
+          setSelectedTime(t);
+          setReserva(null);
+        }}
       >
         {t}
       </button>
@@ -504,6 +606,26 @@ const Booking = ({ servicos, preSelectedService }) => {
     // Pix real (BR Code com o valor) quando a chave do salão está configurada; senão, o QR ilustrativo.
     const pixPayload = service ? gerarPayloadPix(service.price) : null;
 
+    if (espera) {
+      return (
+        <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
+          <div className="row g-4">
+            <div className="col-12 col-lg-7">
+              <AguardandoPagamento
+                agendamentoId={espera.id}
+                pixCopiaCola={espera.pixCopiaCola}
+                valor={service ? service.price : 0}
+                expiraEm={espera.expiraEm}
+                onPago={handlePagamentoConfirmado}
+                onEncerrado={handlePagamentoEncerrado}
+              />
+            </div>
+            <div className="col-12 col-lg-5">{renderSummary()}</div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
         <h3>Como deseja pagar?</h3>
@@ -542,6 +664,18 @@ const Booking = ({ servicos, preSelectedService }) => {
             </div>
 
             <div className={`pay-panel ${payMethod === 'pix' ? 'active' : ''}`} style={{ display: payMethod === 'pix' ? 'block' : 'none' }}>
+              {pgto.online && (
+                <div className="pix-box pix-online">
+                  <div className="pix-info">
+                    <p>Vamos gerar um QR Code Pix só para este agendamento. Seu horário fica reservado por alguns minutos enquanto você paga.</p>
+                    <div className="pix-amount">{amount}</div>
+                    <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => pagarOnline('pix')}>
+                      {enviando ? 'Gerando…' : 'Gerar Pix'}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!pgto.online && (
               <div className="pix-box">
                 {pixPayload ? (
                   <PixQr payload={pixPayload} />
@@ -551,7 +685,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <div className="pix-info">
                   <p>Escaneie o QR Code com o aplicativo do seu banco.</p>
                   <div className="pix-amount">{amount}</div>
-                  <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => confirmarAgendamento('pix')}>
+                  <button className="btn btn-primary pay-btn-card" disabled={enviando || !pgto.carregado} onClick={() => confirmarAgendamento('pix')}>
                     {enviando ? 'Confirmando…' : 'Já realizei o pagamento'}
                   </button>
                 </div>
@@ -561,6 +695,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                   <p className="pix-copia-indisponivel">Pix copia e cola indisponível no momento. Escolha outra forma de pagamento.</p>
                 )}
               </div>
+              )}
             </div>
 
             <div className={`pay-panel ${payMethod === 'cartao' ? 'active' : ''}`} style={{ display: payMethod === 'cartao' ? 'block' : 'none' }}>
@@ -581,7 +716,18 @@ const Booking = ({ servicos, preSelectedService }) => {
                   <label htmlFor="ccCvv">CVV</label>
                   <input type="text" id="ccCvv" placeholder="000" maxLength={4} inputMode="numeric" autoComplete="cc-csc" value={cartao.cvv} onChange={alterarCartao('cvv')} />
                 </div>
+                {pgto.online && (
+                  <div className="field full">
+                    <label htmlFor="ccCpf">CPF do titular</label>
+                    <input type="text" id="ccCpf" placeholder="000.000.000-00" maxLength={14} inputMode="numeric" autoComplete="off" value={cartao.cpf} onChange={alterarCartao('cpf')} />
+                  </div>
+                )}
               </div>
+              {pgto.online && !pgto.chavePublica && (
+                <div className="conta-alerta conta-alerta-aviso" role="alert">
+                  Pagamento por cartão indisponível no momento. Use o Pix ou pague no salão.
+                </div>
+              )}
               {erroCartao && (
                 <div className="conta-alerta conta-alerta-erro" role="alert">
                   {erroCartao}
@@ -591,7 +737,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <span>Total a pagar</span>
                 <b>{amount}</b>
               </div>
-              <button className="btn btn-primary btn-block pay-btn-card" style={{ marginTop: '22px' }} disabled={enviando} onClick={handleCardPayment}>
+              <button className="btn btn-primary btn-block pay-btn-card" style={{ marginTop: '22px' }} disabled={enviando || !pgto.carregado || (pgto.online && !pgto.chavePublica)} onClick={handleCardPayment}>
                 {enviando ? 'Confirmando…' : 'Pagar'}
               </button>
 
@@ -643,12 +789,16 @@ const Booking = ({ servicos, preSelectedService }) => {
           {/* Celular: a ação do método escolhido flutua na barra do rodapé (os botões dentro dos cards ficam ocultos). */}
           <button
             className="btn btn-primary step-nav-confirmar"
-            disabled={enviando}
-            onClick={() => (payMethod === 'cartao' ? handleCardPayment() : confirmarAgendamento(payMethod))}
+            disabled={enviando || (payMethod !== 'presencial' && !pgto.carregado) || (payMethod === 'cartao' && pgto.online && !pgto.chavePublica)}
+            onClick={() => {
+              if (payMethod === 'cartao') handleCardPayment();
+              else if (payMethod === 'pix' && pgto.online) pagarOnline('pix');
+              else confirmarAgendamento(payMethod);
+            }}
           >
             {enviando
               ? 'Confirmando…'
-              : { pix: 'Já realizei o pagamento', cartao: 'Pagar', presencial: 'Confirmar agendamento' }[payMethod]}
+              : { pix: pgto.online ? 'Gerar Pix' : 'Já realizei o pagamento', cartao: 'Pagar', presencial: 'Confirmar agendamento' }[payMethod]}
           </button>
         </div>
       </div>

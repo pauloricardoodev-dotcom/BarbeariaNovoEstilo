@@ -27,7 +27,7 @@ NestJS + PostgreSQL + Prisma no back; frontend atual (React/Vite). Dono único �
 
 ## Alinhando com cliente...
 - **Duração de cada serviço:** o dono vai definir/alinhar com o desenvolvedor o tempo realista de cada serviço, para evitar cliente esperando por atendimento anterior que estourou. Até lá, as durações atuais (`duration`) são placeholders.
-- **Pagamento:** verificando se **Pix estático + presencial** já atende ou se há necessidade de sinal/cobrança online (gateway, ex.: Mercado Pago). Premissa de trabalho: MVP sem gateway; remover aba "Cartão" do site se confirmado.
+- **Pagamento (decidido 2026-10-22):** integrar **Mercado Pago**, cobrando o **valor total** online (Pix e cartão de crédito à vista); Presencial continua sem cobrança online; cancelamento até 24h antes com estorno total após aprovação do barbeiro; reserva do Pix de 10 min; salvar cartão fica para depois. Plano em `GatewayPagamento.md`. _Histórico:_ verificando se **Pix estático + presencial** já atende ou se há necessidade de sinal/cobrança online (gateway, ex.: Mercado Pago). Premissa de trabalho: MVP sem gateway; remover aba "Cartão" do site se confirmado.
 
 ## Em aberto
 - **Salvar cartão no perfil** (pedido do dono, 2026-10-11): depois de preencher o cartão, perguntar "Deseja cadastrar o cartão?"; se não, avisar que no próximo agendamento será preciso informar de novo e pedir confirmação. Dados de cartão **não podem** ser guardados no nosso banco (PCI-DSS; CVV nunca) — só via tokenização de um gateway (ex.: Mercado Pago), guardando token + bandeira + 4 últimos dígitos. Depende da decisão do gateway (ver "Pagamento"). **Decidido:** os alertas já estão no front (`Booking.jsx`, `ConfirmDialog`); o salvamento real entra junto com o gateway.

@@ -1,6 +1,8 @@
 # Gateway de pagamento — briefing e plano
 
-> Briefing para integrar cobrança online no agendamento. **Nada disto foi implementado ainda.** Antes de codar: confirmar as decisões da seção 2 e aprovar o plano da seção 4.
+> Briefing para integrar cobrança online no agendamento. **Status: Fase A (banco) preparada em `backend/prisma/migrations/20261022150000_pagamentos` — aplicada no Supabase em 2026-10-22 (`migrate deploy`; RLS ligado e sem grants para anon/authenticated conferidos).** **Fase B (backend) implementada em `backend/src/pagamentos/`, testada só com gateway fake: o Mercado Pago real ainda NÃO foi exercitado (faltam credenciais sandbox).** **Fase C (frontend) implementada** (Booking com Pix/cartão online, espera com contagem, Meus agendamentos, selos e aviso de estorno no admin; só compilada e lintada, sem teste no navegador). Fase D (sandbox com credenciais reais) pendente.
+>
+> **Decisões fechadas (2026-10-22):** Mercado Pago; cobrança do **valor total** (sem sinal); Pix + cartão de crédito à vista; Presencial continua (sem cobrança online); cancelamento até **24h antes**, estorno total assim que o barbeiro aprova a solicitação; reserva do Pix de **10 min**; salvar cartão no perfil fica para depois.
 
 ## 1. Situação atual (o que já existe)
 
