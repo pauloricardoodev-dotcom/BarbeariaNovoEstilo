@@ -17,7 +17,8 @@ export class DashboardService {
     }
     const { inicio, fim } = limitesDoMes(mes);
     const linhas = await this.prisma.agendamento.findMany({
-      where: { inicio: { gte: inicio, lt: fim } },
+      // Reservas ainda aguardando pagamento online (expiraEm preenchido) não contam.
+      where: { inicio: { gte: inicio, lt: fim }, expiraEm: null },
       select: {
         inicio: true,
         status: true,

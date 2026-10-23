@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
+import Carregando from './components/Carregando.jsx';
 
 // Site e admin são carregados sob demanda: cada um traz o próprio CSS
 // (Bootstrap parcial + globals.css vs. Bootstrap completo + admin.css), que conflitam
@@ -9,7 +10,7 @@ const App = lazy(() => import('./App.jsx'));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard.jsx'));
 
 const AppRoutes = () => (
-  <Suspense fallback={null}>
+  <Suspense fallback={<Carregando />}>
     <Routes>
       <Route path="/admin/*" element={<AdminDashboard />} />
       {/* Endereço antigo do admin */}

@@ -1,6 +1,8 @@
 # Gateway de pagamento — briefing e plano
 
-> Briefing para integrar cobrança online no agendamento. **Nada disto foi implementado ainda.** Antes de codar: confirmar as decisões da seção 2 e aprovar o plano da seção 4.
+> Briefing para integrar cobrança online no agendamento. **Status: Fase A (banco) preparada em `backend/prisma/migrations/20261022150000_pagamentos` — aplicada no Supabase em 2026-10-22 (`migrate deploy`; RLS ligado e sem grants para anon/authenticated conferidos).** **Fase B (backend) implementada em `backend/src/pagamentos/`, testada só com gateway fake: o Mercado Pago real ainda NÃO foi exercitado (faltam credenciais sandbox).** **Fase C (frontend) implementada** (Booking com Pix/cartão online, espera com contagem, Meus agendamentos, selos e aviso de estorno no admin; só compilada e lintada, sem teste no navegador). Fase D (sandbox com credenciais reais) pendente.
+>
+> **Decisões fechadas (2026-10-22):** Mercado Pago; cobrança do **valor total** (sem sinal); Pix + cartão de crédito à vista; Presencial continua (sem cobrança online); cancelamento até **24h antes**, estorno total assim que o barbeiro aprova a solicitação; reserva do Pix de **10 min**; salvar cartão no perfil fica para depois.
 
 ## 1. Situação atual (o que já existe)
 
@@ -13,7 +15,7 @@
 
 ## 2. Decisões que preciso do dono (bloqueiam o código)
 
-> **Respondidas em 2026-10-17** — ver `docs/context/decisoes.md` ("Pagamento online") e a Fase 9 de `docs/context/plano-agendamentos.md`, que substituem as sugestões abaixo: Mercado Pago; valor total; Pix + **débito** + "Pagar no salão"; reserva de **20 min** para todos; estorno automático sempre que o barbeiro autoriza o cancelamento; cartão salvo entra agora; o dono cria a conta.
+> **Respondidas** — valem as "Decisões fechadas (2026-10-22)" do topo (a rodada de 2026-10-17 — débito, 20 min, cartão salvo já — foi revista). Ver `docs/context/decisoes.md`, "Pagamento online".
 
 1. **Qual gateway?** Sugestão: **Mercado Pago** (Pix com confirmação automática + cartão, tokenização, taxas baixas, já citado nos docs). Alternativas: Asaas, Pagar.me, Stripe.
 2. **O que cobrar?** Valor **total** na hora, **sinal** (ex.: 30%) ou só garantir o horário? Define o que fica "a pagar" na barbearia.

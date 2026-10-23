@@ -167,7 +167,11 @@ const AgendamentoModal = ({ agendamento: a, onClose, onChanged }) => {
       </Linha>
       <Linha rotulo="Duração">{a.duracaoMinutos} min</Linha>
       <Linha rotulo="Valor">R$ {a.preco.toFixed(2)}</Linha>
-      <Linha rotulo="Pagamento">{PAGAMENTOS[a.pagamento]}</Linha>
+      <Linha rotulo="Pagamento">
+        {PAGAMENTOS[a.pagamento]}
+        {a.pago && ' · pago online'}
+        {a.aguardandoPagamento && ' · aguardando pagamento (reserva de poucos minutos)'}
+      </Linha>
       <Linha rotulo="Status">
         <StatusBadge status={a.status} />
       </Linha>

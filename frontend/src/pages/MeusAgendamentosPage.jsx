@@ -20,6 +20,10 @@ import {
 
 const PAGAMENTOS = { pix: 'Pix', cartao: 'Cartão', presencial: 'No salão' };
 const STATUS = { agendado: 'Agendado', concluido: 'Concluído', cancelado: 'Cancelado' };
+
+// Pagamento online: reserva esperando o pagamento ou pago (cancelamento de pago só até 24 h antes).
+const rotuloStatus = (a) => (a.aguardandoPagamento ? 'Aguardando pagamento' : STATUS[a.status]);
+const classeStatus = (a) => (a.aguardandoPagamento ? 'aguardando' : a.status);
 const formatarPreco = (v) => 'R$ ' + v.toFixed(2).replace('.', ',');
 
 /** Escolha do novo dia e horário. Só muda o horário; o servidor confere janela, antecedência e disponibilidade. */
@@ -248,7 +252,7 @@ const MeusAgendamentosPage = () => {
             <li key={a.id} className="agenda-item">
               <div className="agenda-topo">
                 <b>{a.servico.nome}</b>
-                <span className={`agenda-status agenda-status-${a.status}`}>{STATUS[a.status]}</span>
+                <span className={`agenda-status agenda-status-${classeStatus(a)}`}>{rotuloStatus(a)}</span>
               </div>
               <dl className="agenda-dados">
                 <div>
@@ -264,6 +268,17 @@ const MeusAgendamentosPage = () => {
                   </dd>
                 </div>
               </dl>
+              {a.aguardandoPagamento && (
+                <p className="agenda-pedido">
+                  Este horário está reservado aguardando o pagamento. Se não for pago em poucos minutos, ele é liberado
+                  automaticamente; faça um novo agendamento para pagar.
+                </p>
+              )}
+              {a.pago && a.status === 'agendado' && (
+                <p className="agenda-pago">
+                  Pago online. O cancelamento com devolução do valor é possível até 24 horas antes do horário.
+                </p>
+              )}
               <StatusDoPedido solicitacao={a.solicitacaoCancelamento} />
               {emAcao === 'reagendar' && (
                 <Reagendar agendamento={a} aoConcluir={concluirAcao} aoVoltar={() => setAcao(null)} />
@@ -297,7 +312,7 @@ const MeusAgendamentosPage = () => {
                       Solicitar cancelamento
                     </button>
                   )}
-                  {!a.podeReagendar && <small className="agenda-aviso">{motivoBloqueio}</small>}
+                  {!a.podeReagendar && !a.aguardandoPagamento && <small className="agenda-aviso">{motivoBloqueio}</small>}
                 </div>
               )}
               <small className="agenda-criado">Agendado em {formatarInstante(a.criadoEm)}</small>

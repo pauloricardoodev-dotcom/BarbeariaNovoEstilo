@@ -12,6 +12,7 @@ import { ConfiguracoesModule } from './configuracoes/configuracoes.module.js';
 import { DiasModule } from './dias/dias.module.js';
 import { validarEnv } from './config/env.validation.js';
 import { MensagensModule } from './mensagens/mensagens.module.js';
+import { PagamentosModule } from './pagamentos/pagamentos.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ServicosModule } from './servicos/servicos.module.js';
 
@@ -29,6 +30,7 @@ import { ServicosModule } from './servicos/servicos.module.js';
     ServicosModule,
     AgendamentosModule,
     AvaliacoesModule,
+    PagamentosModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -53,7 +53,9 @@ export class ConfiguracoesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async obter(): Promise<Configuracoes> {
-    const linha = await this.prisma.configuracao.findUnique({
+    // findFirst (linha única) e não findUnique: o Prisma agrupa findUnique simultâneos com `in`,
+    // o que falha para chave booleana ("Unknown argument `in`") e derrubava pedidos concorrentes.
+    const linha = await this.prisma.configuracao.findFirst({
       where: { id: true },
       select: SELECAO,
     });

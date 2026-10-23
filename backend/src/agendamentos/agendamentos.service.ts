@@ -12,6 +12,7 @@ import type { EstadoDia } from '../dias/dias.js';
 import { DiasService } from '../dias/dias.service.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { WhatsAppService } from '../mensagens/mensagens.types.js';
+import { PagamentosService } from '../pagamentos/pagamentos.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
   AtualizarAgendamentoAdminDto,
@@ -59,6 +60,10 @@ const msgDiaFechadoAdmin = (d: EstadoDia) =>
 const msgExpediente = (c: ConfigHorarios) =>
   `Fora do expediente (${descreverDiasDeTrabalho(c)}, ${c.manhaInicio}–${c.tardeFim}).`;
 const MSG_HORARIO_INDISPONIVEL = 'Este horário não está disponível.';
+/** Com pagamento online aprovado, o cliente só pede cancelamento (e recebe o estorno) até 24 h antes. */
+const ANTECEDENCIA_CANCELAMENTO_PAGO_MS = 24 * 3_600_000;
+const MSG_CANCELAMENTO_TARDE =
+  'Agendamentos pagos online só podem ser cancelados com pelo menos 24 horas de antecedência. Fale com a barbearia.';
 const MSG_CONFLITO =
   'Este horário acabou de ser ocupado. Escolha outro horário.';
 
@@ -71,8 +76,10 @@ const SELECAO_CLIENTE = {
   preco: true,
   pagamento: true,
   status: true,
+  expiraEm: true,
   createdAt: true,
   canceladoEm: true,
+  pagamentos: { where: { status: 'aprovado' }, take: 1, select: { id: true } },
   servico: { select: { id: true, nome: true } },
   solicitacoes: {
     orderBy: { createdAt: 'desc' },
@@ -100,8 +107,10 @@ const SELECAO_ADMIN = {
   pagamento: true,
   status: true,
   nomeAvulso: true,
+  expiraEm: true,
   createdAt: true,
   canceladoEm: true,
+  pagamentos: { where: { status: 'aprovado' }, take: 1, select: { id: true } },
   servico: { select: { id: true, nome: true } },
   cliente: { select: { id: true, nome: true, telefone: true } },
   solicitacoes: {
@@ -128,6 +137,7 @@ const SELECAO_SOLICITACAO = {
       inicio: true,
       status: true,
       nomeAvulso: true,
+      pagamentos: { where: { status: 'aprovado' }, take: 1, select: { id: true } },
       servico: { select: { nome: true } },
       cliente: { select: { id: true, nome: true, telefone: true } },
     },
@@ -150,6 +160,11 @@ export interface AgendamentoCliente {
   preco: number;
   pagamento: string;
   status: string;
+  /** Reserva provisória esperando o pagamento online (vence em `expiraPagamentoEm`). */
+  aguardandoPagamento: boolean;
+  expiraPagamentoEm: string | null;
+  /** Há pagamento online aprovado. */
+  pago: boolean;
   criadoEm: string;
   canceladoEm: string | null;
   /** Última solicitação de cancelamento (pendente, aprovada ou recusada), se houver. */
@@ -180,6 +195,8 @@ export interface AgendamentoAdmin {
   preco: number;
   pagamento: string;
   status: string;
+  aguardandoPagamento: boolean;
+  pago: boolean;
   criadoEm: string;
   canceladoEm: string | null;
   solicitacaoPendente: { id: string; motivo: string; criadaEm: string } | null;
@@ -201,6 +218,8 @@ export interface SolicitacaoAdmin {
     servicoNome: string;
     cliente: { id: string; nome: string; telefone: string } | null;
     nomeAvulso: string | null;
+    /** Pago online: aprovar o cancelamento devolve o valor ao cliente. */
+    pago: boolean;
   };
 }
 
@@ -227,6 +246,8 @@ export interface Pagina<T> {
 function paraCliente(a: LinhaCliente, agora: Date): AgendamentoCliente {
   const s = a.solicitacoes[0] ?? null;
   const ativo = a.status === 'agendado';
+  const aguardando = ativo && a.expiraEm !== null;
+  const pago = a.pagamentos.length > 0;
   return {
     id: a.id,
     servico: a.servico,
@@ -237,6 +258,9 @@ function paraCliente(a: LinhaCliente, agora: Date): AgendamentoCliente {
     preco: a.preco.toNumber(),
     pagamento: a.pagamento,
     status: a.status,
+    aguardandoPagamento: aguardando,
+    expiraPagamentoEm: aguardando ? (a.expiraEm?.toISOString() ?? null) : null,
+    pago,
     criadoEm: a.createdAt.toISOString(),
     canceladoEm: a.canceladoEm?.toISOString() ?? null,
     solicitacaoCancelamento: s && {
@@ -247,9 +271,15 @@ function paraCliente(a: LinhaCliente, agora: Date): AgendamentoCliente {
       criadaEm: s.createdAt.toISOString(),
       decididaEm: s.decididoEm?.toISOString() ?? null,
     },
-    podeReagendar: ativo && podeReagendarAgora(a.inicio, agora),
+    podeReagendar: ativo && !aguardando && podeReagendarAgora(a.inicio, agora),
     podeSolicitarCancelamento:
-      ativo && a.inicio > agora && s?.status !== 'pendente',
+      ativo &&
+      !aguardando &&
+      a.inicio > agora &&
+      s?.status !== 'pendente' &&
+      (!pago ||
+        a.inicio.getTime() - agora.getTime() >=
+          ANTECEDENCIA_CANCELAMENTO_PAGO_MS),
   };
 }
 
@@ -268,6 +298,8 @@ function paraAdmin(a: LinhaAdmin): AgendamentoAdmin {
     preco: a.preco.toNumber(),
     pagamento: a.pagamento,
     status: a.status,
+    aguardandoPagamento: a.status === 'agendado' && a.expiraEm !== null,
+    pago: a.pagamentos.length > 0,
     criadoEm: a.createdAt.toISOString(),
     canceladoEm: a.canceladoEm?.toISOString() ?? null,
     solicitacaoPendente: pendente && {
@@ -296,6 +328,7 @@ function paraSolicitacao(s: LinhaSolicitacao): SolicitacaoAdmin {
       servicoNome: a.servico.nome,
       cliente: a.cliente,
       nomeAvulso: a.nomeAvulso,
+      pago: a.pagamentos.length > 0,
     },
   };
 }
@@ -338,6 +371,7 @@ export class AgendamentosService {
     private readonly whatsapp: WhatsAppService,
     private readonly configuracoes: ConfiguracoesService,
     private readonly dias: DiasService,
+    private readonly pagamentos: PagamentosService,
   ) {}
 
   /** Relógio do servidor; isolado para facilitar testes. */
@@ -456,6 +490,10 @@ export class AgendamentosService {
     }
     const inicio = instante(dto.data, dto.hora);
     const fim = new Date(inicio.getTime() + servico.duracaoMinutos * 60_000);
+    const exigePagamentoOnline =
+      this.pagamentos.ativo &&
+      dto.pagamento !== 'presencial' &&
+      servico.preco.toNumber() > 0;
 
     try {
       const criado = await this.prisma.$transaction(async (tx) => {
@@ -471,6 +509,10 @@ export class AgendamentosService {
             duracaoMinutos: servico.duracaoMinutos,
             preco: servico.preco,
             pagamento: dto.pagamento,
+            // Pagamento online ligado: o horário fica reservado só até `expiraEm`, esperando o pagamento.
+            expiraEm: exigePagamentoOnline
+              ? this.pagamentos.fimDaReserva(agora)
+              : undefined,
           },
           select: SELECAO_CLIENTE,
         });
@@ -485,7 +527,7 @@ export class AgendamentosService {
   private async agendamentoDoCliente(clienteId: string, id: string) {
     const ag = await this.prisma.agendamento.findFirst({
       where: { id, clienteId },
-      select: { id: true, inicio: true, duracaoMinutos: true, status: true },
+      select: { id: true, inicio: true, duracaoMinutos: true, status: true, expiraEm: true },
     });
     if (!ag) throw new NotFoundException('Agendamento não encontrado.');
     return ag;
@@ -613,6 +655,19 @@ export class AgendamentosService {
         'Atendimento que já passou não pode ser cancelado.',
       );
     }
+    if (atual.expiraEm) {
+      throw new ConflictException(
+        'Este agendamento ainda aguarda o pagamento; ele será liberado sozinho se não for pago.',
+      );
+    }
+    if (
+      this.pagamentos.ativo &&
+      atual.inicio.getTime() - agora.getTime() <
+        ANTECEDENCIA_CANCELAMENTO_PAGO_MS &&
+      (await this.pagamentos.estaPago(atual.id))
+    ) {
+      throw new ConflictException(MSG_CANCELAMENTO_TARDE);
+    }
     try {
       await this.prisma.solicitacaoCancelamento.create({
         data: { agendamentoId: atual.id, motivo },
@@ -739,6 +794,8 @@ export class AgendamentosService {
       });
       if (count !== 1) throw new ConflictException('O agendamento mudou.');
     } else {
+      // Devolve o dinheiro ANTES de cancelar: se o estorno falhar, o agendamento continua ativo e dá para tentar de novo.
+      await this.pagamentos.estornarAprovado(id);
       const aprovadas = await this.prisma.$transaction(async (tx) => {
         const { count } = await tx.agendamento.updateMany({
           where: { id, status: 'agendado' },
@@ -746,6 +803,7 @@ export class AgendamentosService {
             status: 'cancelado',
             canceladoEm: agora,
             canceladoPor: adminId,
+            expiraEm: null,
           },
         });
         if (count !== 1) throw new ConflictException('O agendamento mudou.');
@@ -912,6 +970,11 @@ export class AgendamentosService {
     }
     const agora = this.agora();
 
+    // Aprovar o cancelamento devolve o pagamento online (total) antes de cancelar.
+    if (dto.aprovar) {
+      await this.pagamentos.estornarAprovado(atual.agendamentoId);
+    }
+
     await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.solicitacaoCancelamento.updateMany({
         where: { id, status: 'pendente' },
@@ -933,6 +996,7 @@ export class AgendamentosService {
             status: 'cancelado',
             canceladoEm: agora,
             canceladoPor: adminId,
+            expiraEm: null,
           },
         });
       }

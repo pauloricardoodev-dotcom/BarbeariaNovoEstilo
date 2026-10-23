@@ -64,7 +64,7 @@ const DailySchedule = ({ date, dia, appointments, concluindoId, onAppointmentCli
             const jaComecou = new Date(a.inicio).getTime() <= agora;
             const concluido = a.status === 'concluido';
             // Agendado mostra a forma de pagamento; concluído e cancelado seguem mostrando o status.
-            const selo = a.status === 'agendado' ? <PagamentoBadge pagamento={a.pagamento} /> : <StatusBadge status={a.status} />;
+            const selo = a.status === 'agendado' ? <PagamentoBadge pagamento={a.pagamento} aguardando={a.aguardandoPagamento} pago={a.pago} /> : <StatusBadge status={a.status} />;
             return (
               <div
                 key={a.id}
