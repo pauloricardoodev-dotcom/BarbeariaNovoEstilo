@@ -12,6 +12,9 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://teste:teste@localhost:5432/teste',
       JWT_SECRET: 'segredo-de-teste-com-pelo-menos-32-caracteres',
       NODE_ENV: 'test',
+      // Os specs testam o bloqueio de conta não verificada, independentemente do .env local.
+      EXIGIR_CONTA_VERIFICADA: 'true',
+      PAGAMENTO_PROVEDOR: 'desligado',
     },
   },
 });

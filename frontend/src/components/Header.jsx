@@ -103,7 +103,12 @@ const Header = () => {
               <Link to="/meus-agendamentos" className="btn btn-outline-cream header-btn d-none d-xl-inline-flex">
                 Meus agendamentos
               </Link>
-              <Link to="/minha-conta" className="header-perfil d-none d-xl-flex" aria-label="Minha conta">
+              <Link
+                to="/minha-conta"
+                className="header-perfil d-none d-xl-flex"
+                aria-label="Minha conta"
+                title={`Minha conta · ${cliente.nome}`}
+              >
                 <span className="header-perfil-avatar">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="9" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.6" />

@@ -31,7 +31,7 @@ NestJS + PostgreSQL + Prisma no back; frontend atual (React/Vite). Dono único �
 - **Gateway: Mercado Pago.** Conta criada pelo **dono** (o dinheiro cai na conta dele); credenciais de teste primeiro, produção depois. Briefing e status em `GatewayPagamento.md`; checklist na Fase 9 de [plano-agendamentos.md](plano-agendamentos.md).
 - **Cobra o valor total** do serviço (sem sinal). O valor vem do banco, nunca do navegador.
 - **Formas:** **Pix** e **cartão de crédito à vista** online + **Presencial** (sem cobrança online).
-- **Reserva do Pix/cartão:** o horário fica bloqueado por **10 min** (`RESERVA_PAGAMENTO_MINUTOS`) esperando o pagamento; a confirmação vem do webhook. Não pagou ⇒ horário liberado.
+- **Reserva do Pix/cartão:** o horário fica bloqueado por **15 min** (`RESERVA_PAGAMENTO_MINUTOS`; era 10, alterado pelo dono em 2026-10-24) esperando o pagamento; a confirmação vem do webhook (ou da consulta ao Mercado Pago). Não pagou ⇒ horário liberado. O Pix é gerado automaticamente ao chegar no pagamento.
 - **Cancelamento/estorno:** cliente pede até **24h antes**; estorno total assim que o barbeiro aprova.
 - **Salvar cartão no perfil fica para depois.**
 - _Histórico:_ em 2026-10-17 tinha sido decidido Pix + débito, reserva de 20 min, estorno a qualquer momento e cartão salvo já; revisto em 2026-10-22 para o que está acima (e implementado). Antes disso a premissa era MVP sem gateway (Pix estático + presencial).

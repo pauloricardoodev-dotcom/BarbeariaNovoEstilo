@@ -6,7 +6,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { ClienteAutenticado } from '../clientes/clientes.types.js';
+import type { Env } from '../config/env.validation.js';
 import { ConfiguracoesService } from '../configuracoes/configuracoes.service.js';
 import type { EstadoDia } from '../dias/dias.js';
 import { DiasService } from '../dias/dias.service.js';
@@ -372,6 +374,7 @@ export class AgendamentosService {
     private readonly configuracoes: ConfiguracoesService,
     private readonly dias: DiasService,
     private readonly pagamentos: PagamentosService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   /** Relógio do servidor; isolado para facilitar testes. */
@@ -387,6 +390,7 @@ export class AgendamentosService {
   }
 
   private exigirContaVerificada(cliente: ClienteAutenticado): void {
+    if (!this.config.get('EXIGIR_CONTA_VERIFICADA', { infer: true })) return;
     if (!cliente.emailVerificado || !cliente.telefoneVerificado) {
       throw new ForbiddenException(
         'Confirme seu e-mail e seu WhatsApp para poder agendar.',

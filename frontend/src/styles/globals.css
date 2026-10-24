@@ -1936,3 +1936,39 @@ footer .info-list li {
   color: var(--wine);
   font-variant-numeric: tabular-nums;
 }
+
+/* "Gerando o Pix…" e "Processando o pagamento…" */
+.pix-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pix-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--gold);
+  animation: pix-girar 0.9s linear infinite;
+}
+
+@keyframes pix-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pix-spinner {
+    animation: none;
+  }
+}
+
+/* Formulário de cartão do Mercado Pago (Card Payment Brick); os campos são iframes do próprio Mercado Pago. */
+.cartao-mp {
+  margin-top: 18px;
+}

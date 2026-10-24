@@ -506,7 +506,7 @@
   font-size: 12.5px;
 }
 
-/* Perfil: avatar circular padrão + "Olá, Nome" ao lado (à direita de "Agendar horário") */
+/* Perfil: avatar circular padrão + "Olá, Nome" ao lado (à direita de "Agendar horário"; nome só em telas largas) */
 .header-perfil {
   flex-direction: row;
   align-items: center;
@@ -542,6 +542,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Abaixo de 1600px (notebooks) a linha do header não comporta o nome: fica só o avatar (nome no title). */
+@media (max-width: 1599.98px) {
+  .header-perfil-nome {
+    display: none;
+  }
 }
 
 .header-perfil:hover {

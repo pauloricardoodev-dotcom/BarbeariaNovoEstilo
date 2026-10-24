@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { contaVerificada } from '../../sessao/sessaoCliente';
 
 /** O que ainda falta na conta para poder agendar (vazio = nada pendente). */
 const pendenciasConta = (cliente) =>
@@ -12,7 +13,8 @@ const pendenciasConta = (cliente) =>
  * Some sozinho quando a conta está completa.
  */
 const AvisoPendencias = ({ cliente, destino = '/minha-conta', textoBotao = 'Ir para Minha conta', className = '' }) => {
-  const pendencias = pendenciasConta(cliente);
+  // contaVerificada já considera a verificação desligada (VITE_EXIGIR_CONTA_VERIFICADA=false).
+  const pendencias = contaVerificada(cliente) ? [] : pendenciasConta(cliente);
   if (pendencias.length === 0) return null;
   return (
     <div className={`conta-alerta conta-alerta-erro aviso-pendencias ${className}`} role="alert">

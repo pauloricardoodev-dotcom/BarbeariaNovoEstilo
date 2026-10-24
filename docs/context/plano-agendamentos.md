@@ -63,11 +63,12 @@ Rotas: `GET /api/disponibilidade?data=&servicoId=` (público); cliente em `/api/
 - [x] Aviso de pedidos pendentes no menu lateral: item "Notificações" (sino) com ponto vermelho, página própria; barbeiro reagenda um agendamento pelo modal ("Reagendamento").
 
 ## Fase 9 — Pagamento online (Mercado Pago) — **decidido em 2026-10-22; A–C prontas, falta o sandbox**
-Regras em [decisoes.md](decisoes.md), "Pagamento online"; detalhes e status em `GatewayPagamento.md`. Valor total; Pix + crédito à vista + Presencial; reserva de 10 min; cancelamento até 24h com estorno após aprovação; salvar cartão fica para depois. (Substitui o plano de 2026-10-17: débito, 20 min, cartão salvo.)
+Regras em [decisoes.md](decisoes.md), "Pagamento online"; detalhes e status em `GatewayPagamento.md`. Valor total; Pix + crédito à vista + Presencial; reserva de 15 min; cancelamento até 24h com estorno após aprovação; salvar cartão fica para depois. (Substitui o plano de 2026-10-17: débito, 20 min, cartão salvo.)
 - [x] Alertas "Deseja cadastrar o cartão?" / confirmação sem cadastrar (front; só no modo sem pagamento online).
 - [x] **A — Banco.** Migration `20261022150000_pagamentos`.
 - [x] **B — Backend `src/pagamentos/`** (gateway Mercado Pago + fake, webhook com assinatura, reserva/expiração, estorno). Testado só com o fake.
 - [x] **C — Frontend** (Pix/cartão online, `AguardandoPagamento`, Meus agendamentos, selos no admin). Só compilado e lintado.
+- [x] Junção 2026-10-24: Pix automático na aba, Card Payment Brick, motivo da recusa, "pagar no salão" a partir da reserva, validade mínima do Pix no MP, webhook opcional, reserva de 15 min.
 - [ ] **D — Sandbox** com as credenciais de teste do dono (`PAGAMENTO_PROVEDOR=mercadopago`, `MERCADOPAGO_*` no `backend/.env`) + webhook cadastrado no painel do MP; depois credenciais de produção.
 
 ## Fase 7 — Galeria "Nosso trabalho" no lugar de "Nossos serviços" (site) — **substituída em 2026-10-16**

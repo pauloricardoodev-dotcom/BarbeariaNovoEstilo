@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { WEEKDAYS, MONTHS, STEP_LABELS } from '../data/constants';
 import { consultarDisponibilidade, criarAgendamento } from '../api/agendamentos';
-import { iniciarPix, pagarComCartao } from '../api/pagamentos';
+import { iniciarPix, pagarComCartao, pagarNoSalao } from '../api/pagamentos';
 import AguardandoPagamento from './AguardandoPagamento';
+import CartaoMercadoPago from './CartaoMercadoPago';
 import usePagamentoOnline from '../configuracao/usePagamentoOnline';
-import { criarTokenCartao } from '../utils/mercadopago';
 import { diaAgendavel, janelaDeAgendamento, separarPeriodos } from '../utils/datas';
 import ConfirmDialog from './ConfirmDialog';
 import PixCodigo, { PixQr } from './PixCodigo';
@@ -16,8 +16,6 @@ import { exibirTelefone } from '../utils/telefone';
 import useConfiguracoes from '../configuracao/useConfiguracoes';
 import useDiasFechados from '../configuracao/useDiasFechados';
 import {
-  cpfValido,
-  formatarCpf,
   formatarCvv,
   formatarNomeCartao,
   formatarNumeroCartao,
@@ -25,13 +23,13 @@ import {
   validarCartao,
 } from '../utils/cartao';
 
-const CARTAO_VAZIO = { numero: '', nome: '', validade: '', cvv: '', cpf: '' };
+// Formulário de demonstração, só com o pagamento online desligado (com ele ligado o cartão é o do Mercado Pago).
+const CARTAO_VAZIO = { numero: '', nome: '', validade: '', cvv: '' };
 const MASCARAS_CARTAO = {
   numero: formatarNumeroCartao,
   nome: formatarNomeCartao,
   validade: formatarValidade,
   cvv: formatarCvv,
-  cpf: formatarCpf,
 };
 
 // Passos: 1 Serviço · 2 Data e horário · 3 Pagamento · 4 Confirmação.
@@ -69,9 +67,10 @@ const Booking = ({ servicos, preSelectedService }) => {
   const [erroCartao, setErroCartao] = useState('');
   // Pergunta sobre salvar o cartão: null | 'salvar' | 'confirmarSemSalvar'
   const [dialogoCartao, setDialogoCartao] = useState(null);
-  // Pagamento online: reserva provisória do horário ({ id, expiraEm }) e a tela de espera da confirmação.
+  // Pagamento online: reserva provisória do horário ({ id, expiraEm }) e o Pix gerado para ela ({ …, pixCopiaCola }).
   const [reserva, setReserva] = useState(null);
   const [espera, setEspera] = useState(null);
+  const pixAutomatico = useRef({ chave: null, gerar: null });
 
   // Handle pre-selected service from other components
   useEffect(() => {
@@ -204,15 +203,11 @@ const Booking = ({ servicos, preSelectedService }) => {
     setErroCartao('');
   };
 
-  // "Pagar": com os dados válidos, pergunta se o cliente quer cadastrar o cartão.
+  // "Pagar" (pagamento online desligado): com os dados válidos, pergunta se o cliente quer cadastrar o cartão.
   const handleCardPayment = () => {
-    const erro = validarCartao(cartao) || (pgto.online && !cpfValido(cartao.cpf) ? 'CPF do titular inválido.' : '');
+    const erro = validarCartao(cartao);
     if (erro) {
       setErroCartao(erro);
-      return;
-    }
-    if (pgto.online) {
-      pagarOnline('cartao');
       return;
     }
     setDialogoCartao('salvar');
@@ -258,13 +253,16 @@ const Booking = ({ servicos, preSelectedService }) => {
     }
   };
 
-  // Pagamento online: reserva o horário (10 min) e cobra. Quem confirma é o servidor (webhook do gateway);
-  // aqui só mostramos o andamento. O cartão vira token no navegador e nunca passa pelo nosso backend.
-  const pagarOnline = async (metodo) => {
+  // Pagamento online: reserva o horário (RESERVA_PAGAMENTO_MINUTOS) e cobra. Quem confirma é o servidor
+  // (webhook/consulta ao gateway); aqui só mostramos o andamento. `dadosCartao` vem do formulário do
+  // Mercado Pago, já com o token: o cartão nunca passa pelo nosso código nem pelo nosso backend.
+  const pagarOnline = async (metodo, dadosCartao) => {
     if (enviando) return;
     setErroEnvio('');
     setErroCartao('');
     setEnviando(true);
+    // Cartão: a espera do Pix sai de cena (o servidor cancela o Pix em aberto antes de cobrar o cartão).
+    if (metodo === 'cartao') setEspera(null);
     let criouAgora = false;
     try {
       let atual = reserva;
@@ -278,7 +276,6 @@ const Booking = ({ servicos, preSelectedService }) => {
         criouAgora = true;
         if (!ag.aguardandoPagamento) {
           // Nada a cobrar (serviço sem preço): já está confirmado.
-          setCartao(CARTAO_VAZIO);
           setStep(4);
           return;
         }
@@ -290,9 +287,11 @@ const Booking = ({ servicos, preSelectedService }) => {
         const pagamento = await iniciarPix(atual.id);
         setEspera({ ...atual, pixCopiaCola: pagamento.pixCopiaCola });
       } else {
-        const dadosToken = await criarTokenCartao(pgto.chavePublica, cartao);
-        setCartao(CARTAO_VAZIO); // o token basta; não mantém número/CVV na memória da página
-        const pagamento = await pagarComCartao(atual.id, dadosToken);
+        const pagamento = await pagarComCartao(atual.id, {
+          token: dadosCartao.token,
+          metodoId: dadosCartao.payment_method_id,
+          ...(dadosCartao.issuer_id ? { emissorId: String(dadosCartao.issuer_id) } : {}),
+        });
         if (pagamento.status === 'aprovado') {
           setReserva(null);
           setStep(4);
@@ -304,8 +303,8 @@ const Booking = ({ servicos, preSelectedService }) => {
       if (err.status === 401) {
         setErroEnvio('Sua sessão expirou. Entre novamente para agendar.');
       } else if (err.status === 402) {
-        // Cartão recusado: a reserva continua; dá para tentar outro cartão ou pagar com Pix.
-        setErroEnvio(err.message);
+        // Cartão recusado (com o motivo): a reserva continua; dá para tentar outro cartão ou pagar com Pix.
+        setErroCartao(err.message);
       } else if (err.status === 409 || (err.status === 400 && criouAgora)) {
         // Reserva vencida, ou horário tomado antes de reservar: escolher outro horário.
         setReserva(null);
@@ -320,6 +319,49 @@ const Booking = ({ servicos, preSelectedService }) => {
       setEnviando(false);
     }
   };
+
+  // Pagar no salão. Se o horário já estava reservado para pagamento online, a reserva vira presencial
+  // (sem novo agendamento); se o Pix já tinha sido pago, continua pago.
+  const handlePresencial = async () => {
+    if (!reserva) {
+      confirmarAgendamento('presencial');
+      return;
+    }
+    if (enviando) return;
+    setErroEnvio('');
+    setEnviando(true);
+    setEspera(null); // para a consulta do Pix antes de o servidor cancelá-lo
+    try {
+      await pagarNoSalao(reserva.id);
+      setReserva(null);
+      setStep(4);
+    } catch (err) {
+      if (err.status === 409) {
+        setReserva(null);
+        setErroEnvio(err.message);
+        setSelectedTime(null);
+        setStep(2);
+        carregarHorarios(selectedDate, service);
+      } else {
+        setErroEnvio(err.status === 401 ? 'Sua sessão expirou. Entre novamente para agendar.' : err.message);
+      }
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  // Pix é a aba padrão: com o pagamento online ligado, o código já é gerado ao chegar no passo (uma vez por
+  // serviço/dia/horário; se falhar, fica o botão "Gerar Pix de novo").
+  useEffect(() => {
+    pixAutomatico.current.gerar = () => pagarOnline('pix');
+  });
+  const chaveSelecao = service && selectedDate && selectedTime ? `${service.id}|${selectedDate}|${selectedTime}` : null;
+  useEffect(() => {
+    if (step !== 3 || payMethod !== 'pix' || !pgto.online || !chaveSelecao) return;
+    if (pixAutomatico.current.chave === chaveSelecao) return;
+    pixAutomatico.current.chave = chaveSelecao;
+    pixAutomatico.current.gerar?.();
+  }, [step, payMethod, pgto.online, chaveSelecao]);
 
   const handlePagamentoConfirmado = () => {
     setEspera(null);
@@ -597,26 +639,6 @@ const Booking = ({ servicos, preSelectedService }) => {
     // Pix real (BR Code com o valor) quando a chave do salão está configurada; senão, o QR ilustrativo.
     const pixPayload = service ? gerarPayloadPix(service.price) : null;
 
-    if (espera) {
-      return (
-        <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
-          <div className="row g-4">
-            <div className="col-12 col-lg-7">
-              <AguardandoPagamento
-                agendamentoId={espera.id}
-                pixCopiaCola={espera.pixCopiaCola}
-                valor={service ? service.price : 0}
-                expiraEm={espera.expiraEm}
-                onPago={handlePagamentoConfirmado}
-                onEncerrado={handlePagamentoEncerrado}
-              />
-            </div>
-            <div className="col-12 col-lg-5">{renderSummary()}</div>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="step-panel" style={{ display: step === 3 ? 'block' : 'none' }}>
         <h3>Como deseja pagar?</h3>
@@ -655,14 +677,35 @@ const Booking = ({ servicos, preSelectedService }) => {
             </div>
 
             <div className={`pay-panel ${payMethod === 'pix' ? 'active' : ''}`} style={{ display: payMethod === 'pix' ? 'block' : 'none' }}>
-              {pgto.online && (
+              {pgto.online && espera?.pixCopiaCola && (
+                // Consulta o servidor até o pagamento ser confirmado ou a reserva vencer.
+                <AguardandoPagamento
+                  agendamentoId={espera.id}
+                  pixCopiaCola={espera.pixCopiaCola}
+                  valor={service ? service.price : 0}
+                  expiraEm={espera.expiraEm}
+                  onPago={handlePagamentoConfirmado}
+                  onEncerrado={handlePagamentoEncerrado}
+                />
+              )}
+              {pgto.online && !espera?.pixCopiaCola && (
                 <div className="pix-box pix-online">
                   <div className="pix-info">
-                    <p>Vamos gerar um QR Code Pix só para este agendamento. Seu horário fica reservado por alguns minutos enquanto você paga.</p>
+                    <p>
+                      {enviando || !erroEnvio
+                        ? 'Gerando o código Pix deste agendamento… Enquanto você paga, o horário fica reservado.'
+                        : 'Não foi possível gerar o código Pix. Tente de novo ou escolha outra forma de pagamento.'}
+                    </p>
                     <div className="pix-amount">{amount}</div>
-                    <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => pagarOnline('pix')}>
-                      {enviando ? 'Gerando…' : 'Gerar Pix'}
-                    </button>
+                    {enviando || !erroEnvio ? (
+                      <p className="pix-status">
+                        <span className="pix-spinner" aria-hidden="true" /> Gerando…
+                      </p>
+                    ) : (
+                      <button className="btn btn-primary pay-btn-card" onClick={() => pagarOnline('pix')}>
+                        Gerar Pix de novo
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -690,47 +733,63 @@ const Booking = ({ servicos, preSelectedService }) => {
             </div>
 
             <div className={`pay-panel ${payMethod === 'cartao' ? 'active' : ''}`} style={{ display: payMethod === 'cartao' ? 'block' : 'none' }}>
-              <div className="card-form">
-                <div className="field full">
-                  <label htmlFor="ccNumber">Número do cartão</label>
-                  <input type="text" id="ccNumber" placeholder="0000 0000 0000 0000" maxLength={23} inputMode="numeric" autoComplete="cc-number" value={cartao.numero} onChange={alterarCartao('numero')} />
-                </div>
-                <div className="field full">
-                  <label htmlFor="ccName">Nome no cartão</label>
-                  <input type="text" id="ccName" placeholder="Como está impresso no cartão" maxLength={26} autoComplete="cc-name" value={cartao.nome} onChange={alterarCartao('nome')} />
-                </div>
-                <div className="field">
-                  <label htmlFor="ccExp">Validade</label>
-                  <input type="text" id="ccExp" placeholder="MM/AA" maxLength={5} inputMode="numeric" autoComplete="cc-exp" value={cartao.validade} onChange={alterarCartao('validade')} />
-                </div>
-                <div className="field">
-                  <label htmlFor="ccCvv">CVV</label>
-                  <input type="text" id="ccCvv" placeholder="000" maxLength={4} inputMode="numeric" autoComplete="cc-csc" value={cartao.cvv} onChange={alterarCartao('cvv')} />
-                </div>
-                {pgto.online && (
-                  <div className="field full">
-                    <label htmlFor="ccCpf">CPF do titular</label>
-                    <input type="text" id="ccCpf" placeholder="000.000.000-00" maxLength={14} inputMode="numeric" autoComplete="off" value={cartao.cpf} onChange={alterarCartao('cpf')} />
-                  </div>
-                )}
-              </div>
-              {pgto.online && !pgto.chavePublica && (
-                <div className="conta-alerta conta-alerta-aviso" role="alert">
-                  Pagamento por cartão indisponível no momento. Use o Pix ou pague no salão.
-                </div>
-              )}
               {erroCartao && (
                 <div className="conta-alerta conta-alerta-erro" role="alert">
                   {erroCartao}
                 </div>
               )}
-              <div className="pay-amount-line">
-                <span>Total a pagar</span>
-                <b>{amount}</b>
-              </div>
-              <button className="btn btn-primary btn-block pay-btn-card" style={{ marginTop: '22px' }} disabled={enviando || !pgto.carregado || (pgto.online && !pgto.chavePublica)} onClick={handleCardPayment}>
-                {enviando ? 'Confirmando…' : 'Pagar'}
-              </button>
+              {pgto.online ? (
+                <>
+                  <div className="pay-amount-line">
+                    <span>Total a pagar</span>
+                    <b>{amount}</b>
+                  </div>
+                  {enviando && payMethod === 'cartao' && <p className="pix-status">Processando o pagamento…</p>}
+                  {/* Montado só com a aba aberta: o formulário do Mercado Pago (iframes) precisa estar visível. */}
+                  {step === 3 && payMethod === 'cartao' && service && (
+                    pgto.chavePublica ? (
+                      <CartaoMercadoPago
+                        chavePublica={pgto.chavePublica}
+                        valor={service.price}
+                        email={cliente?.email}
+                        onPagar={(dados) => pagarOnline('cartao', dados)}
+                      />
+                    ) : (
+                      <div className="conta-alerta conta-alerta-aviso" role="alert">
+                        Pagamento por cartão indisponível no momento. Use o Pix ou pague no salão.
+                      </div>
+                    )
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="card-form">
+                    <div className="field full">
+                      <label htmlFor="ccNumber">Número do cartão</label>
+                      <input type="text" id="ccNumber" placeholder="0000 0000 0000 0000" maxLength={23} inputMode="numeric" autoComplete="cc-number" value={cartao.numero} onChange={alterarCartao('numero')} />
+                    </div>
+                    <div className="field full">
+                      <label htmlFor="ccName">Nome no cartão</label>
+                      <input type="text" id="ccName" placeholder="Como está impresso no cartão" maxLength={26} autoComplete="cc-name" value={cartao.nome} onChange={alterarCartao('nome')} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="ccExp">Validade</label>
+                      <input type="text" id="ccExp" placeholder="MM/AA" maxLength={5} inputMode="numeric" autoComplete="cc-exp" value={cartao.validade} onChange={alterarCartao('validade')} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="ccCvv">CVV</label>
+                      <input type="text" id="ccCvv" placeholder="000" maxLength={4} inputMode="numeric" autoComplete="cc-csc" value={cartao.cvv} onChange={alterarCartao('cvv')} />
+                    </div>
+                  </div>
+                  <div className="pay-amount-line">
+                    <span>Total a pagar</span>
+                    <b>{amount}</b>
+                  </div>
+                  <button className="btn btn-primary btn-block pay-btn-card" style={{ marginTop: '22px' }} disabled={enviando || !pgto.carregado} onClick={handleCardPayment}>
+                    {enviando ? 'Confirmando…' : 'Pagar'}
+                  </button>
+                </>
+              )}
 
               <ConfirmDialog
                 aberto={dialogoCartao === 'salvar'}
@@ -765,7 +824,7 @@ const Booking = ({ servicos, preSelectedService }) => {
                 <h3 style={{ fontSize: '20px' }}>Pagamento presencial</h3>
                 <p>Você poderá realizar o pagamento diretamente no salão no dia do atendimento.</p>
                 <div className="amt">{amount}</div>
-                <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={() => confirmarAgendamento('presencial')}>
+                <button className="btn btn-primary pay-btn-card" disabled={enviando} onClick={handlePresencial}>
                   {enviando ? 'Confirmando…' : 'Confirmar agendamento'}
                 </button>
               </div>
@@ -777,20 +836,32 @@ const Booking = ({ servicos, preSelectedService }) => {
         </div>
         <div className="step-nav">
           <button className="btn btn-ghost" onClick={() => setStep(2)}>← Voltar</button>
-          {/* Celular: a ação do método escolhido flutua na barra do rodapé (os botões dentro dos cards ficam ocultos). */}
-          <button
-            className="btn btn-primary step-nav-confirmar"
-            disabled={enviando || (payMethod !== 'presencial' && !pgto.carregado) || (payMethod === 'cartao' && pgto.online && !pgto.chavePublica)}
-            onClick={() => {
-              if (payMethod === 'cartao') handleCardPayment();
-              else if (payMethod === 'pix' && pgto.online) pagarOnline('pix');
-              else confirmarAgendamento(payMethod);
-            }}
-          >
-            {enviando
-              ? 'Confirmando…'
-              : { pix: pgto.online ? 'Gerar Pix' : 'Já realizei o pagamento', cartao: 'Pagar', presencial: 'Confirmar agendamento' }[payMethod]}
-          </button>
+          {/* Celular: a ação do método escolhido flutua na barra do rodapé (os botões dentro dos cards ficam ocultos).
+              Cartão online não entra: o botão de pagar é o do próprio formulário do Mercado Pago. */}
+          {!(payMethod === 'cartao' && pgto.online) && (
+            <button
+              className="btn btn-primary step-nav-confirmar"
+              disabled={
+                enviando ||
+                (payMethod !== 'presencial' && !pgto.carregado) ||
+                (payMethod === 'pix' && pgto.online && !!espera?.pixCopiaCola)
+              }
+              onClick={() => {
+                if (payMethod === 'cartao') handleCardPayment();
+                else if (payMethod === 'pix' && pgto.online) pagarOnline('pix');
+                else if (payMethod === 'presencial') handlePresencial();
+                else confirmarAgendamento(payMethod);
+              }}
+            >
+              {enviando
+                ? 'Aguarde…'
+                : {
+                    pix: pgto.online ? (espera?.pixCopiaCola ? 'Aguardando pagamento…' : 'Gerar Pix de novo') : 'Já realizei o pagamento',
+                    cartao: 'Pagar',
+                    presencial: 'Confirmar agendamento',
+                  }[payMethod]}
+            </button>
+          )}
         </div>
       </div>
     );

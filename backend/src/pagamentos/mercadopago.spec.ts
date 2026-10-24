@@ -3,6 +3,7 @@ import {
   assinaturaMercadoPagoValida,
   dataComOffsetSP,
   traduzirStatus,
+  validadePix,
 } from './mercadopago.js';
 
 const SEGREDO = 'segredo-de-teste';
@@ -75,5 +76,18 @@ describe('dataComOffsetSP', () => {
     expect(dataComOffsetSP(new Date('2026-10-22T15:30:00.000Z'))).toBe(
       '2026-10-22T12:30:00.000-03:00',
     );
+  });
+});
+
+describe('validadePix', () => {
+  const agora = new Date('2026-10-24T15:00:00.000Z');
+  const minutos = (m: number) => new Date(agora.getTime() + m * 60_000);
+
+  it('reserva curta (15 min): pede o mínimo do Mercado Pago (31 min)', () => {
+    expect(validadePix(minutos(15), agora)).toEqual(minutos(31));
+  });
+
+  it('reserva mais longa que o mínimo: usa a própria reserva', () => {
+    expect(validadePix(minutos(45), agora)).toEqual(minutos(45));
   });
 });

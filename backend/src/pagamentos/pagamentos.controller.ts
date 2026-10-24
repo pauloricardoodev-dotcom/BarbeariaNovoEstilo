@@ -53,6 +53,17 @@ export class ClientePagamentosController {
   ): Promise<PagamentoCliente> {
     return this.pagamentos.pagarComCartao(cliente, id, dto);
   }
+
+  /** Desiste do pagamento online: o horário reservado fica confirmado para pagar no salão. */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post('presencial')
+  presencial(
+    @ClienteAtual() cliente: ClienteAutenticado,
+    @Param('id', uuid()) id: string,
+  ): Promise<{ pagoOnline: boolean }> {
+    return this.pagamentos.pagarNoSalao(cliente, id);
+  }
 }
 
 /** O que o site precisa saber antes de montar o pagamento. Público e sem dado pessoal. */

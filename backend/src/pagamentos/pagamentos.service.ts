@@ -50,6 +50,24 @@ const MSG_RESERVA_EXPIRADA =
 const MSG_RECUSADO =
   'Pagamento recusado. Confira os dados do cartão ou escolha outra forma de pagamento.';
 
+/** Motivos de recusa do cartão (status_detail do Mercado Pago) em texto para o cliente. */
+const RECUSAS: Record<string, string> = {
+  cc_rejected_insufficient_amount: 'Pagamento recusado: saldo ou limite insuficiente.',
+  cc_rejected_bad_filled_security_code: 'Pagamento recusado: código de segurança (CVV) inválido.',
+  cc_rejected_bad_filled_date: 'Pagamento recusado: data de validade inválida.',
+  cc_rejected_bad_filled_card_number: 'Pagamento recusado: número do cartão inválido.',
+  cc_rejected_bad_filled_other: 'Pagamento recusado: confira os dados do cartão.',
+  cc_rejected_call_for_authorize:
+    'O banco pediu autorização. Autorize o pagamento com o seu banco e tente de novo.',
+  cc_rejected_card_disabled: 'Cartão inativo. Ative-o com o seu banco ou use outro cartão.',
+  cc_rejected_duplicated_payment: 'Pagamento duplicado. Se já pagou, aguarde a confirmação.',
+  cc_rejected_max_attempts: 'Limite de tentativas atingido. Use outro cartão ou pague com Pix.',
+};
+
+export function mensagemRecusa(statusDetalhe: string | null): string {
+  return (statusDetalhe && RECUSAS[statusDetalhe]) || MSG_RECUSADO;
+}
+
 const SELECAO_PAGAMENTO = {
   id: true,
   agendamentoId: true,
@@ -390,9 +408,47 @@ export class PagamentosService implements OnModuleInit, OnModuleDestroy {
       cobranca,
     );
     if (atual.status === 'recusado') {
-      throw new HttpException(MSG_RECUSADO, HttpStatus.PAYMENT_REQUIRED);
+      throw new HttpException(
+        mensagemRecusa(cobranca.statusDetalhe),
+        HttpStatus.PAYMENT_REQUIRED,
+      );
     }
     return this.paraCliente(atual, ag);
+  }
+
+  /**
+   * O cliente desistiu do pagamento online e vai pagar no salão: resolve a cobrança em aberto (se na verdade
+   * já foi paga, continua paga) e torna a reserva definitiva como presencial, sem criar outro agendamento.
+   */
+  async pagarNoSalao(
+    cliente: ClienteAutenticado,
+    agendamentoId: string,
+  ): Promise<{ pagoOnline: boolean }> {
+    const agora = this.agora();
+    const ag = await this.agendamentoDoCliente(cliente.id, agendamentoId);
+    this.exigirReservaAberta(ag, agora);
+
+    const pendente = await this.prisma.pagamento.findFirst({
+      where: { agendamentoId, status: 'pendente' },
+      select: SELECAO_PAGAMENTO,
+    });
+    if (pendente && (await this.resolverPendente(pendente)) === 'paga') {
+      return { pagoOnline: true };
+    }
+    const { count } = await this.prisma.agendamento.updateMany({
+      where: {
+        id: agendamentoId,
+        status: 'agendado',
+        expiraEm: { not: null, gt: agora },
+      },
+      data: { expiraEm: null, pagamento: 'presencial' },
+    });
+    if (count !== 1) {
+      // Mudou no meio do caminho: ou foi pago (webhook) ou a reserva venceu.
+      if (await this.estaPago(agendamentoId)) return { pagoOnline: true };
+      throw new ConflictException(MSG_RESERVA_EXPIRADA);
+    }
+    return { pagoOnline: false };
   }
 
   /** Estado do pagamento mais recente do agendamento; se ainda pendente, confere no gateway. */

@@ -13,6 +13,15 @@ import {
 
 const API = 'https://api.mercadopago.com';
 const TIMEOUT_MS = 15_000;
+/** O Mercado Pago só aceita Pix com validade entre 30 min e 30 dias; 31 min dá folga ao relógio. */
+const VALIDADE_MINIMA_PIX_MS = 31 * 60_000;
+
+/** Validade a pedir ao Mercado Pago: a da reserva, mas nunca menos que o mínimo aceito. */
+export function validadePix(fimDaReserva: Date, agora = new Date()): Date {
+  return new Date(
+    Math.max(fimDaReserva.getTime(), agora.getTime() + VALIDADE_MINIMA_PIX_MS),
+  );
+}
 
 /** Status do Mercado Pago -> status do nosso banco. Desconhecido = pendente (não confirma nada sozinho). */
 export function traduzirStatus(status: unknown, detalhe?: unknown): StatusPagamento {
@@ -148,6 +157,7 @@ export class GatewayMercadoPago extends GatewayPagamento {
       pixCopiaCola: r.point_of_interaction?.transaction_data?.qr_code ?? null,
       bandeira: r.payment_method_id ?? null,
       ultimosQuatro: r.card?.last_four_digits ?? null,
+      statusDetalhe: r.status_detail?.slice(0, 100) ?? null,
     };
   }
 
@@ -159,7 +169,7 @@ export class GatewayMercadoPago extends GatewayPagamento {
         transaction_amount: d.valorCentavos / 100,
         description: d.descricao,
         payment_method_id: 'pix',
-        date_of_expiration: dataComOffsetSP(d.expiraEm),
+        date_of_expiration: dataComOffsetSP(validadePix(d.expiraEm)),
         external_reference: d.referencia,
         payer: { email: d.email, first_name: d.nome },
       },
@@ -181,6 +191,8 @@ export class GatewayMercadoPago extends GatewayPagamento {
         ...(d.emissorId ? { issuer_id: d.emissorId } : {}),
         external_reference: d.referencia,
         payer: { email: d.email },
+        // Aprova ou recusa na hora (sem "em análise"): o horário não fica preso esperando.
+        binary_mode: true,
       },
       `cartao-${d.referencia}`,
     );

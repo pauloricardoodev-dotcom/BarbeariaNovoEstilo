@@ -8,9 +8,15 @@ export const SessaoClienteContext = createContext(null);
 
 export const useSessaoCliente = () => useContext(SessaoClienteContext);
 
-/** Cliente com e-mail e telefone confirmados (exigido para agendar). */
+/**
+ * TEMPORÁRIO: VITE_EXIGIR_CONTA_VERIFICADA=false dispensa a verificação (ver EXIGIR_CONTA_VERIFICADA no backend).
+ * Ausente ou qualquer outro valor = exige.
+ */
+const exigirContaVerificada = import.meta.env.VITE_EXIGIR_CONTA_VERIFICADA !== 'false';
+
+/** Cliente com e-mail e telefone confirmados (exigido para agendar), ou verificação desligada. */
 export const contaVerificada = (cliente) =>
-  Boolean(cliente?.emailVerificado && cliente?.telefoneVerificado);
+  !exigirContaVerificada || Boolean(cliente?.emailVerificado && cliente?.telefoneVerificado);
 
 /**
  * Destino de volta depois do login (?voltar=/caminho). Só caminhos internos:

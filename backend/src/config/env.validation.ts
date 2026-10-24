@@ -42,6 +42,8 @@ export interface Env {
   MERCADOPAGO_PUBLIC_KEY: string;
   /** Por quanto tempo o horário fica reservado esperando o pagamento online. */
   RESERVA_PAGAMENTO_MINUTOS: number;
+  /** TEMPORÁRIO: false libera agendar/avaliar sem confirmar e-mail e WhatsApp. Padrão: true. */
+  EXIGIR_CONTA_VERIFICADA: boolean;
 }
 
 function texto(valor: unknown, padrao = ''): string {
@@ -130,14 +132,19 @@ export function validarEnv(config: Record<string, unknown>): Env {
   const mpSegredo = texto(config.MERCADOPAGO_WEBHOOK_SECRET);
   if (pagamentoProvedor !== 'desligado' && pagamentoProvedor !== 'mercadopago') {
     erros.push('PAGAMENTO_PROVEDOR deve ser "desligado" ou "mercadopago".');
-  } else if (pagamentoProvedor === 'mercadopago' && (!mpToken || !mpSegredo)) {
-    erros.push(
-      'PAGAMENTO_PROVEDOR=mercadopago exige MERCADOPAGO_ACCESS_TOKEN e MERCADOPAGO_WEBHOOK_SECRET.',
-    );
+  } else if (pagamentoProvedor === 'mercadopago' && !mpToken) {
+    // A assinatura do webhook é opcional: sem ela todo webhook é recusado (401) e a confirmação vem da
+    // consulta ao gateway (tela de pagamento aberta e job de expiração).
+    erros.push('PAGAMENTO_PROVEDOR=mercadopago exige MERCADOPAGO_ACCESS_TOKEN.');
   }
-  const reservaMinutos = Number(config.RESERVA_PAGAMENTO_MINUTOS ?? 10);
+  const reservaMinutos = Number(config.RESERVA_PAGAMENTO_MINUTOS ?? 15);
   if (!Number.isInteger(reservaMinutos) || reservaMinutos < 1 || reservaMinutos > 60) {
     erros.push('RESERVA_PAGAMENTO_MINUTOS deve ser um inteiro entre 1 e 60.');
+  }
+
+  const exigirVerificada = texto(config.EXIGIR_CONTA_VERIFICADA, 'true');
+  if (exigirVerificada !== 'true' && exigirVerificada !== 'false') {
+    erros.push('EXIGIR_CONTA_VERIFICADA deve ser "true" ou "false".');
   }
 
   if (erros.length > 0) {
@@ -177,5 +184,6 @@ export function validarEnv(config: Record<string, unknown>): Env {
     MERCADOPAGO_WEBHOOK_SECRET: mpSegredo,
     MERCADOPAGO_PUBLIC_KEY: texto(config.MERCADOPAGO_PUBLIC_KEY),
     RESERVA_PAGAMENTO_MINUTOS: reservaMinutos,
+    EXIGIR_CONTA_VERIFICADA: exigirVerificada === 'true',
   };
 }

@@ -12,6 +12,8 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 60_000,
     fileParallelism: false,
-    env: { NODE_ENV: 'test' },
+    // Nunca fala com o Mercado Pago de verdade (pagamentos.db-spec injeta um gateway fake) e testa sempre
+    // o bloqueio de conta não verificada, independentemente do .env local.
+    env: { NODE_ENV: 'test', EXIGIR_CONTA_VERIFICADA: 'true', PAGAMENTO_PROVEDOR: 'desligado' },
   },
 });

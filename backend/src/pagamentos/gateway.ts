@@ -13,6 +13,8 @@ export interface CobrancaGateway {
   /** Só cartão: bandeira e 4 últimos dígitos (nunca o número completo). */
   bandeira: string | null;
   ultimosQuatro: string | null;
+  /** Detalhe cru do gateway (ex.: cc_rejected_insufficient_amount): motivo da recusa, para log e mensagem. */
+  statusDetalhe: string | null;
 }
 
 export interface DadosPagador {
@@ -25,6 +27,8 @@ export interface NovaCobrancaPix extends DadosPagador {
   referencia: string;
   valorCentavos: number;
   descricao: string;
+  /** Fim da nossa reserva. O gateway pode exigir validade maior (o Mercado Pago, 30 min); nesse caso a
+   *  cobrança é criada mais longa e cancelada pelo job de expiração quando a reserva acaba. */
   expiraEm: Date;
 }
 

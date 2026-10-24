@@ -7,8 +7,10 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import type { ClienteAutenticado } from '../clientes/clientes.types.js';
+import type { Env } from '../config/env.validation.js';
 import { ehViolacaoDeUnicidade } from '../clientes/conflitos.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ArmazenamentoFotos } from './armazenamento.js';
@@ -83,6 +85,7 @@ export class AvaliacoesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly armazenamento: ArmazenamentoFotos,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   private fotos(lista: { id: string }[], admin = false): FotoResposta[] {
@@ -164,7 +167,10 @@ export class AvaliacoesService {
     dto: CriarAvaliacaoDto,
     arquivos: Express.Multer.File[],
   ): Promise<MinhaAvaliacao> {
-    if (!cliente.emailVerificado || !cliente.telefoneVerificado) {
+    if (
+      this.config.get('EXIGIR_CONTA_VERIFICADA', { infer: true }) &&
+      (!cliente.emailVerificado || !cliente.telefoneVerificado)
+    ) {
       throw new ForbiddenException(
         'Confirme seu e-mail e seu WhatsApp para poder avaliar.',
       );

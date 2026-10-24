@@ -52,6 +52,7 @@ class GatewayFake extends GatewayPagamento {
   cancelamentos: string[] = [];
   pixCriados = 0;
   proximoCartao: StatusPagamento = 'aprovado';
+  proximoDetalhe: string | null = null;
   falharEstorno = false;
   private seq = 0;
 
@@ -61,6 +62,7 @@ class GatewayFake extends GatewayPagamento {
     this.cancelamentos = [];
     this.pixCriados = 0;
     this.proximoCartao = 'aprovado';
+    this.proximoDetalhe = null;
     this.falharEstorno = false;
   }
 
@@ -74,6 +76,7 @@ class GatewayFake extends GatewayPagamento {
       pixCopiaCola: `00020126fake${this.seq}`,
       bandeira: null,
       ultimosQuatro: null,
+      statusDetalhe: 'pending_waiting_transfer',
     };
     this.cobrancas.set(c.idExterno, c);
     return Promise.resolve({ ...c });
@@ -88,6 +91,7 @@ class GatewayFake extends GatewayPagamento {
       pixCopiaCola: null,
       bandeira: d.metodoId,
       ultimosQuatro: '4242',
+      statusDetalhe: this.proximoDetalhe,
     };
     this.cobrancas.set(c.idExterno, c);
     return Promise.resolve({ ...c });
@@ -369,7 +373,7 @@ describe('Pagamentos (integração com o banco, gateway fake)', () => {
       });
       gateway.cobrancas.set('fx-orfao', {
         idExterno: 'fx-orfao', status: 'aprovado', valorCentavos: 1, referencia: null,
-        pixCopiaCola: null, bandeira: null, ultimosQuatro: null,
+        pixCopiaCola: null, bandeira: null, ultimosQuatro: null, statusDetalhe: null,
       });
       await expect(webhook('fx-orfao')).resolves.toBeUndefined();
     });
@@ -403,6 +407,16 @@ describe('Pagamentos (integração com o banco, gateway fake)', () => {
       expect(await prisma.pagamento.count({ where: { agendamentoId: ag.id } })).toBe(2);
     });
 
+    it('recusa com motivo conhecido devolve mensagem clara (saldo insuficiente)', async () => {
+      const ag = await reservar(ana, '10:00');
+      gateway.proximoCartao = 'recusado';
+      gateway.proximoDetalhe = 'cc_rejected_insufficient_amount';
+      await expect(pagamentos.pagarComCartao(ana, ag.id, dto)).rejects.toMatchObject({
+        status: 402,
+        message: 'Pagamento recusado: saldo ou limite insuficiente.',
+      });
+    });
+
     it('depois de escolher cartão dá para trocar para Pix (a tentativa pendente é descartada)', async () => {
       const ag = await reservar(ana, '10:00');
       await pagamentos.iniciarPix(ana, ag.id);
@@ -418,6 +432,35 @@ describe('Pagamentos (integração com o banco, gateway fake)', () => {
       await pagamentos.pagarComCartao(ana, ag.id, dto);
       await expect(pagamentos.pagarComCartao(ana, ag.id, dto)).rejects.toBeInstanceOf(ConflictException);
       await expect(pagamentos.iniciarPix(ana, ag.id)).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('pagar no salão (desistir do pagamento online)', () => {
+    it('cancela o Pix em aberto e a reserva vira definitiva como presencial', async () => {
+      const ag = await reservar(ana, '10:00');
+      await pagamentos.iniciarPix(ana, ag.id);
+      const pix = await pagamentoDe(ag.id);
+      await expect(pagamentos.pagarNoSalao(ana, ag.id)).resolves.toEqual({ pagoOnline: false });
+      expect(await doBanco(ag.id)).toMatchObject({ status: 'agendado', expiraEm: null, pagamento: 'presencial' });
+      expect((await pagamentoDe(ag.id)).status).toBe('cancelado');
+      expect(gateway.cancelamentos).toContain(pix.idExterno);
+      expect(await pagamentos.expirarReservas()).toBe(0);
+    });
+
+    it('Pix já pago no gateway: continua pago (não vira presencial)', async () => {
+      const ag = await reservar(ana, '10:00');
+      await pagamentos.iniciarPix(ana, ag.id);
+      gateway.pagar((await pagamentoDe(ag.id)).idExterno!);
+      await expect(pagamentos.pagarNoSalao(ana, ag.id)).resolves.toEqual({ pagoOnline: true });
+      expect(await doBanco(ag.id)).toMatchObject({ expiraEm: null, pagamento: 'pix' });
+      expect((await pagamentoDe(ag.id)).status).toBe('aprovado');
+    });
+
+    it('reserva de outro cliente dá 404; reserva já definitiva dá 409', async () => {
+      const ag = await reservar(ana, '10:00');
+      await expect(pagamentos.pagarNoSalao(bruno, ag.id)).rejects.toMatchObject({ status: 404 });
+      await pagamentos.pagarNoSalao(ana, ag.id);
+      await expect(pagamentos.pagarNoSalao(ana, ag.id)).rejects.toBeInstanceOf(ConflictException);
     });
   });
 

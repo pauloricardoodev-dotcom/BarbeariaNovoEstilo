@@ -17,3 +17,7 @@ export const pagarComCartao = (agendamentoId, dados) =>
 
 /** Andamento do pagamento (o servidor reconfere no gateway se ainda estiver pendente). */
 export const consultarPagamento = (agendamentoId) => request(rota(agendamentoId));
+
+/** Desiste do pagamento online: a reserva vira presencial (pagar no salão). `{ pagoOnline }`. */
+export const pagarNoSalao = (agendamentoId) =>
+  request(`${rota(agendamentoId)}/presencial`, { method: 'POST', body: '{}' });

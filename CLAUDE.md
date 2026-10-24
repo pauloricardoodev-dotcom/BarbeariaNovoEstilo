@@ -13,6 +13,7 @@ Backend: NestJS 12 + Prisma 7 (TypeScript, ESM), migrations SQL em `backend/pris
 ## Mapa rápido
 - `frontend/index.html` → `src/main.jsx` (`BrowserRouter`) → `src/AppRoutes.jsx` (entrada única)
 - Rotas (React Router, `src/AppRoutes.jsx`): `/admin/*` → `admin/AdminDashboard` → `AdminPanel` (abas em `/admin/agenda`, `/admin/servicos`…); `/*` → `App.jsx` (site: `/` home, `/entrar`, `/cadastro`, `/verificar`, `/minha-conta`…)
+- `backend/src/pagamentos` — Mercado Pago (Pix + cartão, webhook, reserva/expiração, estorno); ver `GatewayPagamento.md`
 - `backend/src/auth` — login do admin (JWT, papéis `ADMIN`/`SUPPORT`, hash scrypt em `senha.ts`); padrão a seguir nos novos módulos
 - `barbearia-novo-estilo.html` (raiz) — protótipo HTML único antigo, referência histórica
 - `RefatorancaoVisual.md` — briefing de refatoração visual citado nos docs, mas **não existe no repositório**; o visual de referência é o próprio `frontend/src/styles/globals.css` e as imagens em `Referencia/`
@@ -28,7 +29,7 @@ Backend: NestJS 12 + Prisma 7 (TypeScript, ESM), migrations SQL em `backend/pris
 
 ## Convenções observadas
 - Idioma da UI e dos dados: pt-BR. Datas no admin: `DD/MM/YYYY`; no site público: `YYYY-MM-DD`.
-- Status de agendamento: `agendado | concluido | cancelado`; status de serviço/profissional: `ativo | inativo`.
+- Status de agendamento: `agendado | concluido | cancelado` (reserva aguardando pagamento online = `agendado` com `expira_em`); status de pagamento: `pendente | aprovado | recusado | cancelado | estornado | expirado`; status de serviço/profissional: `ativo | inativo`.
 - Componentes funcionais com hooks, `export default`, estado local com `useState`; handlers nomeados `handleX`.
 - **Mantenha estes arquivos de contexto atualizados ao adicionar/alterar funcionalidades.**
 
