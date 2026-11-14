@@ -4,7 +4,7 @@ import { atualizarPerfil, trocarSenha } from '../api/clientes';
 import Campo, { CampoSenha } from '../components/conta/Campo';
 import AvisoPendencias from '../components/conta/AvisoPendencias';
 import ContaLayout, { Alerta } from '../components/conta/ContaLayout';
-import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
+import { contaVerificada, exigirContaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone, formatarTelefone } from '../utils/telefone';
 
 // Campo de contato ainda não confirmado: fica vermelho, com o atalho para confirmar.
@@ -87,7 +87,7 @@ const MeusDados = ({ cliente, aoSalvar }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           dica="Confirmado"
-          erro={!cliente.emailVerificado && <NaoConfirmado />}
+          erro={exigirContaVerificada && !cliente.emailVerificado && <NaoConfirmado />}
           maxLength={254}
         />
         {emailMudou && cliente.temSenha && (
@@ -109,7 +109,7 @@ const MeusDados = ({ cliente, aoSalvar }) => {
           value={telefone}
           onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
           dica="Confirmado"
-          erro={!cliente.telefoneVerificado && <NaoConfirmado />}
+          erro={exigirContaVerificada && !cliente.telefoneVerificado && <NaoConfirmado />}
           maxLength={30}
         />
         <button

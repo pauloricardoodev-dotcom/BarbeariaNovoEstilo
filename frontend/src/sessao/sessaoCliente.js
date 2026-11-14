@@ -9,10 +9,9 @@ export const SessaoClienteContext = createContext(null);
 export const useSessaoCliente = () => useContext(SessaoClienteContext);
 
 /**
- * TEMPORÁRIO: VITE_EXIGIR_CONTA_VERIFICADA=false dispensa a verificação (ver EXIGIR_CONTA_VERIFICADA no backend).
- * Ausente ou qualquer outro valor = exige.
+ * TEMPORÁRIO: só exige com VITE_EXIGIR_CONTA_VERIFICADA=true; ausente = não exige.
  */
-const exigirContaVerificada = import.meta.env.VITE_EXIGIR_CONTA_VERIFICADA !== 'false';
+export const exigirContaVerificada = import.meta.env.VITE_EXIGIR_CONTA_VERIFICADA === 'true';
 
 /** TEMPORÁRIO: VITE_EXIGIR_WHATSAPP_VERIFICADO=false dispensa só o WhatsApp (ver EXIGIR_WHATSAPP_VERIFICADO no backend). */
 export const exigirWhatsappVerificado = import.meta.env.VITE_EXIGIR_WHATSAPP_VERIFICADO !== 'false';

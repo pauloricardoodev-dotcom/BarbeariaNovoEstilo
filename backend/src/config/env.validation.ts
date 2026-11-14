@@ -144,7 +144,7 @@ export function validarEnv(config: Record<string, unknown>): Env {
     erros.push('RESERVA_PAGAMENTO_MINUTOS deve ser um inteiro entre 1 e 60.');
   }
 
-  const exigirVerificada = texto(config.EXIGIR_CONTA_VERIFICADA, 'true');
+  const exigirVerificada = texto(config.EXIGIR_CONTA_VERIFICADA, 'false');
   if (exigirVerificada !== 'true' && exigirVerificada !== 'false') {
     erros.push('EXIGIR_CONTA_VERIFICADA deve ser "true" ou "false".');
   }

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { exigirContaVerificada } from './sessao/sessaoCliente';
 import 'bootstrap/dist/css/bootstrap-grid.min.css';
 import 'bootstrap/dist/css/bootstrap-utilities.min.css';
 import Header from './components/Header';
@@ -57,9 +58,13 @@ function App() {
             <Route
               path="verificar"
               element={
-                <ExigeCliente>
-                  <VerificarPage />
-                </ExigeCliente>
+                exigirContaVerificada ? (
+                  <ExigeCliente>
+                    <VerificarPage />
+                  </ExigeCliente>
+                ) : (
+                  <Navigate to="/" replace />
+                )
               }
             />
             <Route
