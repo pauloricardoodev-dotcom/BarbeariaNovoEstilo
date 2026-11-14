@@ -1,11 +1,11 @@
 import { Link } from 'react-router';
-import { contaVerificada } from '../../sessao/sessaoCliente';
+import { contaVerificada, exigirWhatsappVerificado } from '../../sessao/sessaoCliente';
 
 /** O que ainda falta na conta para poder agendar (vazio = nada pendente). */
 const pendenciasConta = (cliente) =>
   [
     !cliente?.emailVerificado && { campo: 'E-mail', texto: 'não confirmado' },
-    !cliente?.telefoneVerificado && { campo: 'Celular (WhatsApp)', texto: 'não confirmado' },
+    exigirWhatsappVerificado && !cliente?.telefoneVerificado && { campo: 'Celular (WhatsApp)', texto: 'não confirmado' },
   ].filter(Boolean);
 
 /**

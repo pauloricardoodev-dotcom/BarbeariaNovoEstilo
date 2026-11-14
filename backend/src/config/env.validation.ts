@@ -44,6 +44,8 @@ export interface Env {
   RESERVA_PAGAMENTO_MINUTOS: number;
   /** TEMPORÁRIO: false libera agendar/avaliar sem confirmar e-mail e WhatsApp. Padrão: true. */
   EXIGIR_CONTA_VERIFICADA: boolean;
+  /** TEMPORÁRIO: false dispensa só a confirmação do WhatsApp (e-mail continua exigido). Padrão: true. */
+  EXIGIR_WHATSAPP_VERIFICADO: boolean;
 }
 
 function texto(valor: unknown, padrao = ''): string {
@@ -146,6 +148,10 @@ export function validarEnv(config: Record<string, unknown>): Env {
   if (exigirVerificada !== 'true' && exigirVerificada !== 'false') {
     erros.push('EXIGIR_CONTA_VERIFICADA deve ser "true" ou "false".');
   }
+  const exigirWhatsapp = texto(config.EXIGIR_WHATSAPP_VERIFICADO, 'true');
+  if (exigirWhatsapp !== 'true' && exigirWhatsapp !== 'false') {
+    erros.push('EXIGIR_WHATSAPP_VERIFICADO deve ser "true" ou "false".');
+  }
 
   if (erros.length > 0) {
     throw new Error(`Configuração inválida:\n- ${erros.join('\n- ')}`);
@@ -185,5 +191,6 @@ export function validarEnv(config: Record<string, unknown>): Env {
     MERCADOPAGO_PUBLIC_KEY: texto(config.MERCADOPAGO_PUBLIC_KEY),
     RESERVA_PAGAMENTO_MINUTOS: reservaMinutos,
     EXIGIR_CONTA_VERIFICADA: exigirVerificada === 'true',
+    EXIGIR_WHATSAPP_VERIFICADO: exigirWhatsapp === 'true',
   };
 }

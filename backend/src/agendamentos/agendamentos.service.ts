@@ -391,7 +391,8 @@ export class AgendamentosService {
 
   private exigirContaVerificada(cliente: ClienteAutenticado): void {
     if (!this.config.get('EXIGIR_CONTA_VERIFICADA', { infer: true })) return;
-    if (!cliente.emailVerificado || !cliente.telefoneVerificado) {
+    const exigirWhatsapp = this.config.get('EXIGIR_WHATSAPP_VERIFICADO', { infer: true });
+    if (!cliente.emailVerificado || (exigirWhatsapp && !cliente.telefoneVerificado)) {
       throw new ForbiddenException(
         'Confirme seu e-mail e seu WhatsApp para poder agendar.',
       );

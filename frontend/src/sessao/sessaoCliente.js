@@ -14,9 +14,13 @@ export const useSessaoCliente = () => useContext(SessaoClienteContext);
  */
 const exigirContaVerificada = import.meta.env.VITE_EXIGIR_CONTA_VERIFICADA !== 'false';
 
-/** Cliente com e-mail e telefone confirmados (exigido para agendar), ou verificação desligada. */
+/** TEMPORÁRIO: VITE_EXIGIR_WHATSAPP_VERIFICADO=false dispensa só o WhatsApp (ver EXIGIR_WHATSAPP_VERIFICADO no backend). */
+export const exigirWhatsappVerificado = import.meta.env.VITE_EXIGIR_WHATSAPP_VERIFICADO !== 'false';
+
+/** Cliente com e-mail (e telefone, se exigido) confirmados para agendar, ou verificação desligada. */
 export const contaVerificada = (cliente) =>
-  !exigirContaVerificada || Boolean(cliente?.emailVerificado && cliente?.telefoneVerificado);
+  !exigirContaVerificada ||
+  Boolean(cliente?.emailVerificado && (!exigirWhatsappVerificado || cliente?.telefoneVerificado));
 
 /**
  * Destino de volta depois do login (?voltar=/caminho). Só caminhos internos:

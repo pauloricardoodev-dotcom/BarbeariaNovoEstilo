@@ -169,7 +169,9 @@ export class AvaliacoesService {
   ): Promise<MinhaAvaliacao> {
     if (
       this.config.get('EXIGIR_CONTA_VERIFICADA', { infer: true }) &&
-      (!cliente.emailVerificado || !cliente.telefoneVerificado)
+      (!cliente.emailVerificado ||
+        (this.config.get('EXIGIR_WHATSAPP_VERIFICADO', { infer: true }) &&
+          !cliente.telefoneVerificado))
     ) {
       throw new ForbiddenException(
         'Confirme seu e-mail e seu WhatsApp para poder avaliar.',
