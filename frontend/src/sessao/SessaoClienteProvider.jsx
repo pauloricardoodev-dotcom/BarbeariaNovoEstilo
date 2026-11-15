@@ -12,7 +12,11 @@ const SessaoClienteProvider = ({ children }) => {
   }, []);
 
   const recarregar = useCallback(
-    () => clienteAtual().then(definirCliente, () => setStatus('erro')),
+    // Uma nova tentativa antes de dar erro: o servidor gratuito pode estar "acordando".
+    () =>
+      clienteAtual()
+        .catch(() => new Promise((resolve) => setTimeout(resolve, 1500)).then(clienteAtual))
+        .then(definirCliente, () => setStatus('erro')),
     [definirCliente],
   );
 
