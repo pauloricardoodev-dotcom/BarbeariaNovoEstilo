@@ -83,7 +83,7 @@ export class ClientesAuthController {
   ) {}
 
   @Publico()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('cadastro')
   async cadastrar(
     @Body() dto: CadastroClienteDto,
@@ -93,8 +93,8 @@ export class ClientesAuthController {
   }
 
   @Publico()
-  // Contra força bruta: 5 tentativas por minuto por IP.
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // Contra força bruta: 20 tentativas por minuto por IP.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -108,7 +108,7 @@ export class ClientesAuthController {
 
   /** Login/vínculo com Google, ou devolve o "cadastro pendente" (falta telefone + termos). */
   @Publico()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('google')
   @HttpCode(HttpStatus.OK)
   async google(
@@ -126,7 +126,7 @@ export class ClientesAuthController {
   }
 
   @Publico()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('google/completar')
   async completarGoogle(
     @Body() dto: GoogleCompletarDto,
