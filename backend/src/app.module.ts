@@ -20,7 +20,11 @@ import { ServicosModule } from './servicos/servicos.module.js';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validarEnv }),
     // Limite geral generoso; rotas sensíveis (login) definem o próprio com @Throttle.
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    // TEMPORÁRIO: DESABILITAR_RATE_LIMIT=true no .env desliga o limite de requisições (@Throttle incluso).
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 120 }],
+      skipIf: () => process.env.DESABILITAR_RATE_LIMIT === 'true',
+    }),
     PrismaModule,
     AuthModule,
     MensagensModule,
