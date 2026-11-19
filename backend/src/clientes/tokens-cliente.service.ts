@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   createHmac,
@@ -15,9 +10,6 @@ import type { Env } from '../config/env.validation.js';
 import { Prisma, TipoTokenCliente } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
-export const MAX_TENTATIVAS = 5;
-const ESPERA_REENVIO_MS = 60_000;
-const MAX_ENVIOS_POR_HORA = 5;
 const VALIDADE_MS: Record<TipoTokenCliente, number> = {
   verificar_email: 10 * 60_000,
   verificar_telefone: 10 * 60_000,
@@ -57,36 +49,14 @@ export class TokensClienteService {
 
   /**
    * Gera um novo código/token e invalida os anteriores do mesmo tipo.
-   * Limita reenvios (cada WhatsApp custa dinheiro; e-mails em excesso viram spam).
-   * `contatoNovo`: o destino acabou de mudar (ex.: e-mail digitado errado e corrigido),
-   * então a espera entre reenvios não se aplica — o limite por hora continua valendo.
+   * Sem limite de reenvio nem de tentativas (desativado de propósito; ver PELOAMORDEDEUS.md).
    */
   async emitir(
     clienteId: string,
     tipo: TipoTokenCliente,
-    { contatoNovo = false } = {},
+    _opcoes: { contatoNovo?: boolean } = {},
   ): Promise<string> {
     const agora = Date.now();
-    const recentes = await this.prisma.tokenCliente.findMany({
-      where: {
-        clienteId,
-        tipo,
-        createdAt: { gt: new Date(agora - 60 * 60_000) },
-      },
-      select: { createdAt: true },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (
-      recentes.length >= MAX_ENVIOS_POR_HORA ||
-      (!contatoNovo &&
-        recentes[0] &&
-        agora - recentes[0].createdAt.getTime() < ESPERA_REENVIO_MS)
-    ) {
-      throw new HttpException(
-        'Aguarde um pouco antes de pedir um novo código.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
 
     const valor =
       tipo === 'recuperar_senha'
@@ -131,21 +101,6 @@ export class TokensClienteService {
       );
     }
 
-    // Conta a tentativa antes de comparar, de forma atômica: requisições em
-    // paralelo não conseguem passar do limite.
-    const tentativa = await this.prisma.tokenCliente.updateMany({
-      where: {
-        id: token.id,
-        usadoEm: null,
-        tentativas: { lt: MAX_TENTATIVAS },
-      },
-      data: { tentativas: { increment: 1 } },
-    });
-    if (tentativa.count === 0) {
-      throw new BadRequestException(
-        'Muitas tentativas. Solicite um novo código.',
-      );
-    }
     if (!this.iguais(this.hash(codigo), token.tokenHash)) {
       throw new BadRequestException('Código incorreto.');
     }

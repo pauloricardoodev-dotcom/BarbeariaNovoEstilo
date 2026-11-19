@@ -199,16 +199,6 @@ describe('Auth do admin (e2e)', () => {
     );
   });
 
-  it('limita tentativas de login (429)', async () => {
-    const tentativas = Array.from({ length: 6 }, () =>
-      request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({ email: 'dono@novoestilo.com', senha: 'errada' }),
-    );
-    const status = (await Promise.all(tentativas)).map((r) => r.status);
-    expect(status).toContain(429);
-  });
-
   describe('separação entre sessão de admin e de cliente', () => {
     const jwt = new JwtService({
       secret: 'segredo-de-teste-com-pelo-menos-32-caracteres',

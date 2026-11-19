@@ -6,7 +6,7 @@ import ContaLayout, { Alerta } from '../components/conta/ContaLayout';
 import { contaVerificada, destinoSeguro, useSessaoCliente } from '../sessao/sessaoCliente';
 import { exibirTelefone } from '../utils/telefone';
 
-const ESPERA_REENVIO_S = 60;
+const ESPERA_REENVIO_S = 0;
 
 const CANAIS = {
   email: {

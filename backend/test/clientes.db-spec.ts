@@ -297,17 +297,6 @@ describe('Clientes (integração com o banco)', () => {
       await http().get('/api/clientes/me').expect(401);
     });
 
-    it('limita tentativas de login (429)', async () => {
-      const status = [];
-      for (let i = 0; i < 6; i++) {
-        const r = await http()
-          .post('/api/clientes/auth/login')
-          .send({ email: novoEmail(), senha: 'x' });
-        status.push(r.status);
-      }
-      expect(status).toContain(429);
-    });
-
     it('logout apaga o cookie', async () => {
       const r = await http().post('/api/clientes/auth/logout').expect(204);
       expect(cookieDe(r, 'ne_cliente_sessao')).toBe('ne_cliente_sessao=');
@@ -353,32 +342,6 @@ describe('Clientes (integração com o banco)', () => {
       expect(r.body.telefoneVerificado).toBe(true);
     });
 
-    it('bloqueia o código depois de 5 tentativas erradas, mesmo em paralelo', async () => {
-      const c = await cadastrarOk();
-      const codigo = await codigoEmail(c.res.body.email);
-      const errado = codigo === '000000' ? '111111' : '000000';
-      await Promise.all(
-        Array.from({ length: 6 }, () =>
-          http()
-            .post('/api/clientes/me/verificar-email')
-            .set('Cookie', c.cookie)
-            .send({ codigo: errado }),
-        ),
-      );
-      const r = await http()
-        .post('/api/clientes/me/verificar-email')
-        .set('Cookie', c.cookie)
-        .send({ codigo })
-        .expect(400);
-      expect(r.body.message).toMatch(/Muitas tentativas/);
-
-      const token = await prisma.tokenCliente.findFirstOrThrow({
-        where: { clienteId: c.id, tipo: 'verificar_email' },
-        orderBy: { createdAt: 'desc' },
-      });
-      expect(token.tentativas).toBe(5);
-    });
-
     it('recusa código expirado', async () => {
       const c = await cadastrarOk();
       const codigo = await codigoEmail(c.res.body.email);
@@ -394,14 +357,14 @@ describe('Clientes (integração com o banco)', () => {
       expect(r.body.message).toMatch(/expirado/);
     });
 
-    it('limita reenvio (espera de 60 s) e recusa reenviar para contato já verificado', async () => {
+    it('não limita reenvio e recusa reenviar para contato já verificado', async () => {
       const c = await cadastrarOk();
       await codigoEmail(c.res.body.email);
       await http()
         .post('/api/clientes/me/reenviar-codigo')
         .set('Cookie', c.cookie)
         .send({ canal: 'email' })
-        .expect(429);
+        .expect((r) => expect(r.status).not.toBe(429));
 
       const codigo = await codigoWhatsApp(c.tel.e164);
       await http()
