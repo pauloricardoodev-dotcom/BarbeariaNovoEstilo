@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import { Publico, UsuarioAtual } from '../auth/decorators.js';
 import type { UsuarioAutenticado } from '../auth/auth.types.js';
 import { ClienteAtual, RotaCliente } from '../clientes/cliente-auth.js';
@@ -43,7 +43,7 @@ export class DisponibilidadeController {
   constructor(private readonly agendamentos: AgendamentosService) {}
 
   @Publico()
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get()
   consultar(
     @Query() query: DisponibilidadeDto,
@@ -63,7 +63,7 @@ export class ClienteAgendamentosController {
     return this.agendamentos.listarDoCliente(cliente.id);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post()
   criar(
     @ClienteAtual() cliente: ClienteAutenticado,
@@ -72,7 +72,7 @@ export class ClienteAgendamentosController {
     return this.agendamentos.criarDoCliente(cliente, dto);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post(':id/reagendar')
   reagendar(
@@ -83,7 +83,7 @@ export class ClienteAgendamentosController {
     return this.agendamentos.reagendar(cliente, id, dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':id/solicitar-cancelamento')
   solicitarCancelamento(
     @ClienteAtual() cliente: ClienteAutenticado,

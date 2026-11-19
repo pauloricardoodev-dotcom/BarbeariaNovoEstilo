@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import type { CookieOptions, Response } from 'express';
 import type { Env } from '../config/env.validation.js';
 import { COOKIE_SESSAO } from './auth.constants.js';
@@ -36,7 +36,7 @@ export class AuthController {
 
   @Publico()
   // Contra força bruta: 20 tentativas por minuto por IP.
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(

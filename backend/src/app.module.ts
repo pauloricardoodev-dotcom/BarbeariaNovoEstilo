@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+// DESATIVADO (sem rate limit):
+// import { APP_GUARD } from '@nestjs/core';
+// import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AgendamentosModule } from './agendamentos/agendamentos.module.js';
@@ -19,12 +20,12 @@ import { ServicosModule } from './servicos/servicos.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validarEnv }),
-    // Limite geral generoso; rotas sensíveis (login) definem o próprio com @Throttle.
-    // TEMPORÁRIO: DESABILITAR_RATE_LIMIT=true no .env desliga o limite de requisições (@Throttle incluso).
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 120 }],
-      skipIf: () => process.env.DESABILITAR_RATE_LIMIT === 'true',
-    }),
+    // // Limite geral generoso; rotas sensíveis (login) definem o próprio com @Throttle.
+    // // TEMPORÁRIO: DESABILITAR_RATE_LIMIT=true no .env desliga o limite de requisições (@Throttle incluso).
+    // ThrottlerModule.forRoot({
+    // throttlers: [{ ttl: 60_000, limit: 120 }],
+    // skipIf: () => process.env.DESABILITAR_RATE_LIMIT === 'true',
+    // }),
     PrismaModule,
     AuthModule,
     MensagensModule,
@@ -37,6 +38,7 @@ import { ServicosModule } from './servicos/servicos.module.js';
     PagamentosModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [AppService],
+  // providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }], // DESATIVADO (sem rate limit)
 })
 export class AppModule {}

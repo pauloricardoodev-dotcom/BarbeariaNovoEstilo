@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import { Publico } from '../auth/decorators.js';
 import { ClienteAtual, RotaCliente } from '../clientes/cliente-auth.js';
 import type { ClienteAutenticado } from '../clientes/clientes.types.js';
@@ -33,7 +33,7 @@ export class ClientePagamentosController {
     return this.pagamentos.statusDoAgendamento(cliente, id);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('pix')
   pix(
@@ -43,7 +43,7 @@ export class ClientePagamentosController {
     return this.pagamentos.iniciarPix(cliente, id);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('cartao')
   cartao(
@@ -55,7 +55,7 @@ export class ClientePagamentosController {
   }
 
   /** Desiste do pagamento online: o horário reservado fica confirmado para pagar no salão. */
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('presencial')
   presencial(
@@ -87,7 +87,7 @@ export class WebhookPagamentosController {
   constructor(private readonly pagamentos: PagamentosService) {}
 
   @Publico()
-  @Throttle({ default: { limit: 300, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 300, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('webhook')
   async receber(

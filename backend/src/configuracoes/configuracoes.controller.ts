@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import { Publico } from '../auth/decorators.js';
 import {
   ConfiguracoesService,
@@ -13,7 +13,7 @@ export class ConfiguracoesController {
   constructor(private readonly configuracoes: ConfiguracoesService) {}
 
   @Publico()
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get()
   obter(): Promise<Configuracoes> {
     return this.configuracoes.obter();

@@ -11,7 +11,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import type { CookieOptions, Response } from 'express';
 import { Publico } from '../auth/decorators.js';
 import { LoginDto } from '../auth/dto/login.dto.js';
@@ -83,7 +83,7 @@ export class ClientesAuthController {
   ) {}
 
   @Publico()
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('cadastro')
   async cadastrar(
     @Body() dto: CadastroClienteDto,
@@ -94,7 +94,7 @@ export class ClientesAuthController {
 
   @Publico()
   // Contra força bruta: 20 tentativas por minuto por IP.
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -108,7 +108,7 @@ export class ClientesAuthController {
 
   /** Login/vínculo com Google, ou devolve o "cadastro pendente" (falta telefone + termos). */
   @Publico()
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('google')
   @HttpCode(HttpStatus.OK)
   async google(
@@ -126,7 +126,7 @@ export class ClientesAuthController {
   }
 
   @Publico()
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('google/completar')
   async completarGoogle(
     @Body() dto: GoogleCompletarDto,
@@ -146,7 +146,7 @@ export class ClientesAuthController {
   }
 
   @Publico()
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('esqueci-senha')
   @HttpCode(HttpStatus.ACCEPTED)
   async esqueciSenha(
@@ -160,7 +160,7 @@ export class ClientesAuthController {
   }
 
   @Publico()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('redefinir-senha')
   @HttpCode(HttpStatus.NO_CONTENT)
   async redefinirSenha(@Body() dto: RedefinirSenhaDto): Promise<void> {
@@ -182,7 +182,7 @@ export class ClientesMeController {
     return cliente;
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Patch()
   atualizar(
     @ClienteAtual() cliente: ClienteAutenticado,
@@ -191,7 +191,7 @@ export class ClientesMeController {
     return this.conta.atualizarPerfil(cliente.id, dto);
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('senha')
   async trocarSenha(
     @ClienteAtual() cliente: ClienteAutenticado,
@@ -206,7 +206,7 @@ export class ClientesMeController {
     return this.cookie.definir(res, sessao);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('verificar-email')
   @HttpCode(HttpStatus.OK)
   verificarEmail(
@@ -216,7 +216,7 @@ export class ClientesMeController {
     return this.conta.verificar(cliente.id, 'email', dto.codigo);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('verificar-telefone')
   @HttpCode(HttpStatus.OK)
   verificarTelefone(
@@ -226,7 +226,7 @@ export class ClientesMeController {
     return this.conta.verificar(cliente.id, 'telefone', dto.codigo);
   }
 
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('reenviar-codigo')
   @HttpCode(HttpStatus.NO_CONTENT)
   async reenviarCodigo(

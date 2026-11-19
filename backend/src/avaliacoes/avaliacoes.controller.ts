@@ -16,7 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import type { Response } from 'express';
 import { Publico } from '../auth/decorators.js';
 import { ClienteAtual, RotaCliente } from '../clientes/cliente-auth.js';
@@ -82,7 +82,7 @@ export class ClienteAvaliacaoController {
   }
 
   /** multipart/form-data: `nota`, `comentario` e até 3 arquivos no campo `fotos`. */
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post()
   @UseInterceptors(
     FilesInterceptor('fotos', MAX_FOTOS, {
@@ -97,7 +97,7 @@ export class ClienteAvaliacaoController {
     return this.avaliacoes.criar(cliente, dto, fotos);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
   async apagar(@ClienteAtual() cliente: ClienteAutenticado): Promise<void> {

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+// import { Throttle } from '@nestjs/throttler'; // DESATIVADO (sem rate limit)
 import { Publico } from '../auth/decorators.js';
 import type { EstadoDia } from './dias.js';
 import { DiasService } from './dias.service.js';
@@ -14,7 +14,7 @@ export class DiasController {
   constructor(private readonly dias: DiasService) {}
 
   @Publico()
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  // DESATIVADO (sem rate limit): @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get()
   listar(@Query() { de, ate }: ListarDiasDto): Promise<EstadoDia[]> {
     return this.dias.especiais(de, ate);
