@@ -3,13 +3,11 @@ import { Link } from 'react-router';
 import { apagarMinhaAvaliacao, enviarAvaliacao, listarAvaliacoes, minhaAvaliacao } from '../api/avaliacoes';
 import { contaVerificada, useSessaoCliente } from '../sessao/sessaoCliente';
 import { GOOGLE_AVALIACAO_URL } from '../data/constants';
-import { reduzirFoto } from '../utils/reduzirFoto';
 import { Estrelas, SeletorEstrelas } from './Estrelas';
 
 /** Quantas avaliações aparecem na seção; as demais ficam em "Ver todas as avaliações". */
 const POR_PAGINA = 4;
 const POR_PAGINA_MODAL = 12;
-const MAX_FOTOS = 3;
 const MAX_COMENTARIO = 600;
 const MSG_LIMITE = 'Muitas tentativas. Aguarde um minuto e tente novamente.';
 /** A média só aparece com avaliações suficientes: com 1 ou 2 notas ela engana. */
@@ -146,37 +144,8 @@ const Cartao = ({ avaliacao, onAbrirFoto }) => (
 const FormAvaliacao = ({ onEnviada }) => {
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
-  const [fotos, setFotos] = useState([]); // { id, arquivo, url }
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const entradaRef = useRef(null);
-  const fotosRef = useRef(fotos);
-  useEffect(() => {
-    fotosRef.current = fotos;
-  }, [fotos]);
-
-  // Libera as prévias (object URLs) ao sair.
-  useEffect(() => () => fotosRef.current.forEach((f) => URL.revokeObjectURL(f.url)), []);
-
-  const adicionar = (e) => {
-    const novas = [...e.target.files].filter((a) => a.type.startsWith('image/'));
-    e.target.value = '';
-    if (novas.length === 0) return;
-    setErro('');
-    setFotos((atuais) =>
-      [...atuais, ...novas.map((arquivo) => ({ id: crypto.randomUUID(), arquivo, url: URL.createObjectURL(arquivo) }))].slice(
-        0,
-        MAX_FOTOS,
-      ),
-    );
-  };
-
-  const remover = (id) => {
-    setFotos((atuais) => {
-      atuais.filter((f) => f.id === id).forEach((f) => URL.revokeObjectURL(f.url));
-      return atuais.filter((f) => f.id !== id);
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -185,11 +154,10 @@ const FormAvaliacao = ({ onEnviada }) => {
     setErro('');
     setEnviando(true);
     try {
-      const reduzidas = await Promise.all(fotos.map((f) => reduzirFoto(f.arquivo)));
-      const criada = await enviarAvaliacao({ nota, comentario: comentario.trim(), fotos: reduzidas });
+      const criada = await enviarAvaliacao({ nota, comentario: comentario.trim(), fotos: [] });
       onEnviada(criada);
     } catch (err) {
-      setErro(err.status === 429 ? MSG_LIMITE : err.status === 413 ? 'Uma das fotos é grande demais.' : err.message);
+      setErro(err.status === 429 ? MSG_LIMITE : err.message);
       setEnviando(false);
     }
   };
@@ -232,44 +200,6 @@ const FormAvaliacao = ({ onEnviada }) => {
       </div>
 
       <div className="avaliacao-form-dir">
-      <div className="field">
-        <label>Fotos do corte (opcional)</label>
-        <div className="avaliacao-previas">
-          {fotos.map((f) => (
-            <div key={f.id} className="avaliacao-previa">
-              <img src={f.url} alt="Prévia da foto escolhida" />
-              <button type="button" onClick={() => remover(f.id)} aria-label="Remover foto" disabled={enviando}>
-                ×
-              </button>
-            </div>
-          ))}
-          {fotos.length < MAX_FOTOS && (
-            <button
-              type="button"
-              className="avaliacao-adicionar"
-              onClick={() => entradaRef.current?.click()}
-              disabled={enviando}
-            >
-              <span aria-hidden="true">＋</span>
-              <span>Adicionar foto</span>
-            </button>
-          )}
-        </div>
-        <input
-          ref={entradaRef}
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={adicionar}
-          aria-label="Escolher fotos do corte"
-        />
-        <span className="field-hint">Até {MAX_FOTOS} fotos, nos formatos JPG, PNG ou WebP.</span>
-        <span className="field-hint avaliacao-privacidade">
-          Os metadados de localização das fotos são removidos automaticamente.
-        </span>
-      </div>
-
       <button type="submit" className="btn btn-primary" disabled={enviando}>
         {enviando ? 'Enviando…' : 'Publicar avaliação'}
       </button>
@@ -554,7 +484,7 @@ const Reviews = () => {
           {status !== 'logado' && (
             <div className="avaliacao-form">
               <h3>Conte como foi sua experiência</h3>
-              <p className="avaliacao-form-sub">Entre na sua conta para avaliar e enviar fotos do seu corte.</p>
+              <p className="avaliacao-form-sub">Entre na sua conta para avaliar o seu atendimento.</p>
               <Link to="/entrar?voltar=%2F%23avaliacoes" className="btn btn-primary">
                 Entrar para avaliar
               </Link>
